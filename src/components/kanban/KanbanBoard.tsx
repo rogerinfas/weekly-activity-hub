@@ -1,20 +1,26 @@
 'use client'
 
 import {
+  closestCenter,
+  CollisionDetection,
   DndContext,
-  DragEndEvent,
-  DragOverEvent,
   DragOverlay,
-  DragStartEvent,
+  getFirstCollision,
+  MeasuringStrategy,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
+  UniqueIdentifier,
   useSensor,
   useSensors,
-  closestCorners,
-  UniqueIdentifier,
 } from '@dnd-kit/core'
-import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Task, COLUMNS, Status, Column } from '@/lib/types'
 import { KanbanCard, KanbanCardUI } from './KanbanCard'
 import { cn } from '@/lib/utils'
@@ -29,106 +35,200 @@ interface KanbanBoardProps {
   onAddTask: (status: Status) => void
 }
 
+// Internal data structure: column id → ordered task ids
+type ColumnMap = Record<Status, UniqueIdentifier[]>
+
+function tasksToColumnMap(tasks: Task[]): ColumnMap {
+  return COLUMNS.reduce((acc, col) => {
+    acc[col.id] = tasks.filter(t => t.status === col.id).map(t => t.id)
+    return acc
+  }, {} as ColumnMap)
+}
+
+function applyColumnMap(source: Task[], columnMap: ColumnMap): Task[] {
+  const byId = Object.fromEntries(source.map(t => [t.id, t]))
+  return (Object.entries(columnMap) as [Status, UniqueIdentifier[]][]).flatMap(
+    ([status, ids]) => ids.map(id => ({ ...byId[id as string], status }))
+  )
+}
+
 export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask }: KanbanBoardProps) {
-  // Local copy of tasks used exclusively during a drag session
-  const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
-  const [activeTask, setActiveTask] = useState<Task | null>(null)
-
-  // Ref to know if we're currently dragging without causing re-renders
-  const isDraggingRef = useRef(false)
-
-  // When the parent updates tasks (e.g. add/edit/delete) and we're NOT dragging,
-  // sync the local copy. Using useEffect avoids setting state during render.
-  // Sync from parent when not dragging. The eslint rule is suppressed because
-  // this is a deliberate external-state subscription, not a cascading update.
+  const [columnMap, setColumnMap] = useState<ColumnMap>(() => tasksToColumnMap(tasks))
+  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
+  const lastOverId = useRef<UniqueIdentifier | null>(null)
+  const recentlyMovedToNewContainer = useRef(false)
+  // Snapshot taken at drag start for cancel rollback
+  const clonedColumnMap = useRef<ColumnMap | null>(null)
+  // Keep a stable reference to tasks without causing re-renders
+  const tasksRef = useRef(tasks)
   useEffect(() => {
-    if (!isDraggingRef.current) {
+    tasksRef.current = tasks
+  })
+
+  // Sync column map when tasks change from outside (add/edit/delete) but NOT during drag
+  useEffect(() => {
+    if (activeId === null) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLocalTasks(tasks)
+      setColumnMap(tasksToColumnMap(tasks))
     }
-  }, [tasks])
+  }, [tasks, activeId])
+
+  // Per the official dnd-kit example: reset recentlyMovedToNewContainer after each render
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      recentlyMovedToNewContainer.current = false
+    })
+  }, [columnMap])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   )
 
-  const tasksByStatus = useMemo(() => {
-    return COLUMNS.reduce((acc, column) => {
-      acc[column.id] = localTasks.filter(t => t.status === column.id)
-      return acc
-    }, {} as Record<Status, Task[]>)
-  }, [localTasks])
+  const findContainer = useCallback((id: UniqueIdentifier): Status | undefined => {
+    // id is one of the column ids
+    if (id in columnMap) return id as Status
+    // id is a task id
+    return (Object.keys(columnMap) as Status[]).find(key =>
+      columnMap[key].includes(id)
+    )
+  }, [columnMap])
 
-  function handleDragStart(event: DragStartEvent) {
-    isDraggingRef.current = true
-    const task = localTasks.find(t => t.id === event.active.id)
-    if (task) setActiveTask(task)
+  // Custom collision detection from the official dnd-kit MultipleContainers example
+  const collisionDetectionStrategy: CollisionDetection = useCallback(
+    (args) => {
+      // Pointer-within first (most precise)
+      const pointerIntersections = pointerWithin(args)
+      const intersections = pointerIntersections.length > 0
+        ? pointerIntersections
+        : rectIntersection(args)
+      let overId = getFirstCollision(intersections, 'id')
+
+      if (overId != null) {
+        if (overId in columnMap) {
+          const colItems = columnMap[overId as Status]
+          if (colItems.length > 0) {
+            // Return the closest item inside the container
+            overId = closestCenter({
+              ...args,
+              droppableContainers: args.droppableContainers.filter(c =>
+                c.id !== overId && colItems.includes(c.id)
+              ),
+            })[0]?.id ?? overId
+          }
+        }
+        lastOverId.current = overId
+        return [{ id: overId }]
+      }
+
+      if (recentlyMovedToNewContainer.current) {
+        lastOverId.current = activeId
+      }
+      return lastOverId.current ? [{ id: lastOverId.current }] : []
+    },
+    [activeId, columnMap]
+  )
+
+  function handleDragStart({ active }: { active: { id: UniqueIdentifier } }) {
+    setActiveId(active.id)
+    clonedColumnMap.current = columnMap
   }
 
-  function handleDragOver(event: DragOverEvent) {
-    const { active, over } = event
-    if (!over) return
+  function handleDragOver({ active, over }: { active: { id: UniqueIdentifier }, over: { id: UniqueIdentifier } | null }) {
+    const overId = over?.id
+    if (overId == null) return
 
-    const activeId = active.id as string
-    const overId = over.id as string
-    if (activeId === overId) return
+    const overContainer = findContainer(overId)
+    const activeContainer = findContainer(active.id)
+    if (!overContainer || !activeContainer) return
+    if (activeContainer === overContainer) return  // Same column — handled in dragEnd
 
-    setLocalTasks(prev => {
-      const activeTask = prev.find(t => t.id === activeId)
-      if (!activeTask) return prev
+    // Moving to a different column
+    setColumnMap(prev => {
+      const activeItems = prev[activeContainer]
+      const overItems = prev[overContainer]
+      const overIndex = overItems.indexOf(overId)
+      const activeIndex = activeItems.indexOf(active.id)
 
-      // Dropped over a column
-      const isOverColumn = COLUMNS.some(c => c.id === overId)
-      if (isOverColumn) {
-        if (activeTask.status === overId) return prev
-        return prev.map(t => t.id === activeId ? { ...t, status: overId as Status } : t)
+      let newIndex: number
+      if (overId in prev) {
+        newIndex = overItems.length + 1
+      } else {
+        const isBelowOverItem =
+          over &&
+          'rect' in over &&
+          (over as { rect: { top: number; height: number } }).rect.top !== undefined
+
+        newIndex = overIndex >= 0 ? overIndex + (isBelowOverItem ? 1 : 0) : overItems.length + 1
       }
 
-      // Dropped over another task
-      const overTask = prev.find(t => t.id === overId)
-      if (!overTask) return prev
+      recentlyMovedToNewContainer.current = true
 
-      if (activeTask.status !== overTask.status) {
-        // Move to the target column, position before the over-task
-        const moved = prev.map(t => t.id === activeId ? { ...t, status: overTask.status } : t)
-        const colTasks = moved.filter(t => t.status === overTask.status)
-        const overIdx = colTasks.findIndex(t => t.id === overId)
-        const activeIdx = colTasks.findIndex(t => t.id === activeId)
-        const reordered = arrayMove(colTasks, activeIdx, overIdx)
-        return [...moved.filter(t => t.status !== overTask.status), ...reordered]
+      return {
+        ...prev,
+        [activeContainer]: activeItems.filter(id => id !== active.id),
+        [overContainer]: [
+          ...overItems.slice(0, newIndex),
+          activeItems[activeIndex],
+          ...overItems.slice(newIndex),
+        ],
       }
-
-      // Reorder within the same column
-      const colTasks = prev.filter(t => t.status === activeTask.status)
-      const oldIdx = colTasks.findIndex(t => t.id === activeId)
-      const newIdx = colTasks.findIndex(t => t.id === overId)
-      if (oldIdx === newIdx) return prev
-      const reordered = arrayMove(colTasks, oldIdx, newIdx)
-      return [...prev.filter(t => t.status !== activeTask.status), ...reordered]
     })
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    void event // satisfy linter
-    isDraggingRef.current = false
-    setActiveTask(null)
-    // Commit final local state to parent — done outside of any setState callback
-    onTasksChange(localTasks)
+  function handleDragEnd({ active, over }: { active: { id: UniqueIdentifier }, over: { id: UniqueIdentifier } | null }) {
+    const activeContainer = findContainer(active.id)
+    if (!activeContainer) {
+      setActiveId(null)
+      return
+    }
+
+    const overId = over?.id
+    if (overId == null) {
+      setActiveId(null)
+      return
+    }
+
+    const overContainer = findContainer(overId)
+    if (!overContainer) {
+      setActiveId(null)
+      return
+    }
+
+    const activeIndex = columnMap[activeContainer].indexOf(active.id)
+    const overIndex = columnMap[overContainer].indexOf(overId)
+
+    let finalMap = columnMap
+    if (activeIndex !== overIndex && activeContainer === overContainer) {
+      finalMap = {
+        ...columnMap,
+        [overContainer]: arrayMove(columnMap[overContainer], activeIndex, overIndex),
+      }
+      setColumnMap(finalMap)
+    }
+
+    // Commit to parent
+    onTasksChange(applyColumnMap(tasksRef.current, finalMap))
+    setActiveId(null)
+    clonedColumnMap.current = null
   }
 
   function handleDragCancel() {
-    isDraggingRef.current = false
-    setActiveTask(null)
-    // Revert: sync back from parent
-    setLocalTasks(tasks)
+    if (clonedColumnMap.current) {
+      setColumnMap(clonedColumnMap.current)
+    }
+    setActiveId(null)
+    clonedColumnMap.current = null
   }
+
+  const activeTask = activeId
+    ? tasks.find(t => t.id === activeId) ?? null
+    : null
 
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionDetectionStrategy}
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -139,7 +239,8 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
           <DroppableColumn
             key={column.id}
             column={column}
-            tasks={tasksByStatus[column.id]}
+            taskIds={columnMap[column.id]}
+            allTasks={tasks}
             onEdit={onEdit}
             onDelete={onDelete}
             onAddTask={onAddTask}
@@ -161,19 +262,21 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
   )
 }
 
-// ----- Internal column component -----
+// ----- DroppableColumn (internal) -----
 
 interface DroppableColumnProps {
   column: Column
-  tasks: Task[]
+  taskIds: UniqueIdentifier[]
+  allTasks: Task[]
   onEdit: (task: Task) => void
   onDelete: (id: string) => void
   onAddTask: (status: Status) => void
 }
 
-function DroppableColumn({ column, tasks, onEdit, onDelete, onAddTask }: DroppableColumnProps) {
+function DroppableColumn({ column, taskIds, allTasks, onEdit, onDelete, onAddTask }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
-  const taskIds = useMemo<UniqueIdentifier[]>(() => tasks.map(t => t.id), [tasks])
+  const taskById = Object.fromEntries(allTasks.map(t => [t.id, t]))
+  const orderedTasks = taskIds.map(id => taskById[id as string]).filter(Boolean)
 
   return (
     <div className="flex flex-col w-72 shrink-0">
@@ -183,7 +286,7 @@ function DroppableColumn({ column, tasks, onEdit, onDelete, onAddTask }: Droppab
           <span className={cn('w-2.5 h-2.5 rounded-full', column.color)} />
           <h2 className="text-sm font-semibold text-foreground">{column.title}</h2>
           <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 font-medium tabular-nums">
-            {tasks.length}
+            {taskIds.length}
           </span>
         </div>
         <Button
@@ -206,7 +309,7 @@ function DroppableColumn({ column, tasks, onEdit, onDelete, onAddTask }: Droppab
         )}
       >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          {tasks.map(task => (
+          {orderedTasks.map(task => (
             <KanbanCard
               key={task.id}
               task={task}
@@ -216,7 +319,7 @@ function DroppableColumn({ column, tasks, onEdit, onDelete, onAddTask }: Droppab
           ))}
         </SortableContext>
 
-        {tasks.length === 0 && (
+        {taskIds.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center py-8 text-muted-foreground/40">
             <div className="text-xs text-center">Arrastra tarjetas aquí</div>
           </div>
