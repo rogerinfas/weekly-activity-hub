@@ -31,9 +31,29 @@ export function KanbanCard({ task, onEdit, onDelete, isOverlay }: KanbanCardProp
   }
 
   return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      <KanbanCardUI
+        task={task}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        isDragging={isDragging}
+        isOverlay={isOverlay}
+      />
+    </div>
+  )
+}
+
+interface KanbanCardUIProps {
+  task: Task
+  onEdit: (task: Task) => void
+  onDelete: (id: string) => void
+  isDragging?: boolean
+  isOverlay?: boolean
+}
+
+export function KanbanCardUI({ task, onEdit, onDelete, isDragging, isOverlay }: KanbanCardUIProps) {
+  return (
     <div
-      ref={setNodeRef}
-      style={style}
       className={cn(
         'group relative bg-card rounded-xl border border-border/60 p-3.5 shadow-sm',
         'hover:shadow-md hover:border-primary/30 transition-all duration-200',
@@ -42,12 +62,10 @@ export function KanbanCard({ task, onEdit, onDelete, isOverlay }: KanbanCardProp
         isOverlay && 'shadow-xl rotate-1 scale-105 cursor-grabbing',
       )}
     >
-      {/* Drag handle */}
+      {/* Drag handle icon (visual only here, listeners are on the parent wrapper) */}
       <div
-        {...attributes}
-        {...listeners}
         className={cn(
-          'absolute left-2 top-1/2 -translate-y-1/2 cursor-grab active:cursor-grabbing',
+          'absolute left-2 top-1/2 -translate-y-1/2',
           'text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors',
           'opacity-0 group-hover:opacity-100',
         )}
@@ -66,7 +84,10 @@ export function KanbanCard({ task, onEdit, onDelete, isOverlay }: KanbanCardProp
               size="icon"
               variant="ghost"
               className="h-6 w-6 text-muted-foreground hover:text-foreground"
-              onClick={() => onEdit(task)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit(task)
+              }}
             >
               <Pencil className="h-3 w-3" />
             </Button>
@@ -74,7 +95,10 @@ export function KanbanCard({ task, onEdit, onDelete, isOverlay }: KanbanCardProp
               size="icon"
               variant="ghost"
               className="h-6 w-6 text-muted-foreground hover:text-destructive"
-              onClick={() => onDelete(task.id)}
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(task.id)
+              }}
             >
               <Trash2 className="h-3 w-3" />
             </Button>

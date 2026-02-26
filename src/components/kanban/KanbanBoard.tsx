@@ -12,10 +12,10 @@ import {
   closestCorners,
 } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Task, COLUMNS, Status } from '@/lib/types'
 import { KanbanColumn } from './KanbanColumn'
-import { KanbanCard } from './KanbanCard'
+import { KanbanCardUI } from './KanbanCard'
 
 interface KanbanBoardProps {
   tasks: Task[]
@@ -34,8 +34,12 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
     })
   )
 
-  const getTasksByStatus = (status: Status) =>
-    tasks.filter(t => t.status === status)
+  const tasksByStatus = useMemo(() => {
+    return COLUMNS.reduce((acc, column) => {
+      acc[column.id] = tasks.filter(t => t.status === column.id)
+      return acc
+    }, {} as Record<Status, Task[]>)
+  }, [tasks])
 
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find(t => t.id === event.active.id)
@@ -92,7 +96,7 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
 
     // If over a task in the same column, reorder
     if (overTask && activeTask.status === overTask.status) {
-      const colTasks = getTasksByStatus(activeTask.status)
+      const colTasks = tasksByStatus[activeTask.status]
       const oldIdx = colTasks.findIndex(t => t.id === activeId)
       const newIdx = colTasks.findIndex(t => t.id === overId)
       const reordered = arrayMove(colTasks, oldIdx, newIdx)
@@ -114,7 +118,7 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
           <KanbanColumn
             key={column.id}
             column={column}
-            tasks={getTasksByStatus(column.id)}
+            tasks={tasksByStatus[column.id]}
             onEdit={onEdit}
             onDelete={onDelete}
             onAddTask={onAddTask}
@@ -124,10 +128,10 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
 
       <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
         {activeTask && (
-          <KanbanCard
+          <KanbanCardUI
             task={activeTask}
-            onEdit={() => {}}
-            onDelete={() => {}}
+            onEdit={() => { }}
+            onDelete={() => { }}
             isOverlay
           />
         )}

@@ -38,10 +38,13 @@ export default function Home() {
     }, 0)
   }, [])
 
-  // Save to localStorage
+  // Save to localStorage (debounced)
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem('wah-tasks', JSON.stringify(tasks))
+      const timeout = setTimeout(() => {
+        localStorage.setItem('wah-tasks', JSON.stringify(tasks))
+      }, 500)
+      return () => clearTimeout(timeout)
     }
   }, [tasks, isLoaded])
 
