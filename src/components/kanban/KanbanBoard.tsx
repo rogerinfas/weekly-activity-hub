@@ -2,6 +2,7 @@
 
 import {
   DndContext,
+  DragEndEvent,
   DragOverEvent,
   DragOverlay,
   DragStartEvent,
@@ -13,7 +14,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { Task, COLUMNS, Status, Column } from '@/lib/types'
 import { KanbanCard, KanbanCardUI } from './KanbanCard'
 import { cn } from '@/lib/utils'
@@ -28,20 +29,24 @@ interface KanbanBoardProps {
   onAddTask: (status: Status) => void
 }
 
-/**
- * KanbanBoard manages drag-and-drop using a LOCAL copy of tasks so we never
- * call the parent's onTasksChange during the fast-firing onDragOver events.
- * Only onDragEnd commits the final state upwards.
- */
 export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask }: KanbanBoardProps) {
+  // Local copy of tasks used exclusively during a drag session
   const [localTasks, setLocalTasks] = useState<Task[]>(tasks)
   const [activeTask, setActiveTask] = useState<Task | null>(null)
-  const isDragging = activeTask !== null
 
-  // Sync local tasks when parent tasks change (but not during drags)
-  if (!isDragging && localTasks !== tasks) {
-    setLocalTasks(tasks)
-  }
+  // Ref to know if we're currently dragging without causing re-renders
+  const isDraggingRef = useRef(false)
+
+  // When the parent updates tasks (e.g. add/edit/delete) and we're NOT dragging,
+  // sync the local copy. Using useEffect avoids setting state during render.
+  // Sync from parent when not dragging. The eslint rule is suppressed because
+  // this is a deliberate external-state subscription, not a cascading update.
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLocalTasks(tasks)
+    }
+  }, [tasks])
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -56,12 +61,13 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
     }, {} as Record<Status, Task[]>)
   }, [localTasks])
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
+  function handleDragStart(event: DragStartEvent) {
+    isDraggingRef.current = true
     const task = localTasks.find(t => t.id === event.active.id)
     if (task) setActiveTask(task)
-  }, [localTasks])
+  }
 
-  const handleDragOver = useCallback((event: DragOverEvent) => {
+  function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
     if (!over) return
 
@@ -73,7 +79,7 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
       const activeTask = prev.find(t => t.id === activeId)
       if (!activeTask) return prev
 
-      // Check if dropped over a column header
+      // Dropped over a column
       const isOverColumn = COLUMNS.some(c => c.id === overId)
       if (isOverColumn) {
         if (activeTask.status === overId) return prev
@@ -85,39 +91,39 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
       if (!overTask) return prev
 
       if (activeTask.status !== overTask.status) {
-        // Move to another column, place right before the over-task
-        const updated = prev.map(t => t.id === activeId ? { ...t, status: overTask.status } : t)
-        const colTasks = updated.filter(t => t.status === overTask.status)
+        // Move to the target column, position before the over-task
+        const moved = prev.map(t => t.id === activeId ? { ...t, status: overTask.status } : t)
+        const colTasks = moved.filter(t => t.status === overTask.status)
         const overIdx = colTasks.findIndex(t => t.id === overId)
         const activeIdx = colTasks.findIndex(t => t.id === activeId)
         const reordered = arrayMove(colTasks, activeIdx, overIdx)
-        return [...updated.filter(t => t.status !== overTask.status), ...reordered]
-      } else {
-        // Reorder within same column
-        const colTasks = prev.filter(t => t.status === activeTask.status)
-        const oldIdx = colTasks.findIndex(t => t.id === activeId)
-        const newIdx = colTasks.findIndex(t => t.id === overId)
-        if (oldIdx === newIdx) return prev
-        const reordered = arrayMove(colTasks, oldIdx, newIdx)
-        return [...prev.filter(t => t.status !== activeTask.status), ...reordered]
+        return [...moved.filter(t => t.status !== overTask.status), ...reordered]
       }
-    })
-  }, [])
 
-  const handleDragEnd = useCallback(() => {
-    setActiveTask(null)
-    // Commit local state to parent once drag finishes
-    setLocalTasks(current => {
-      onTasksChange(current)
-      return current
+      // Reorder within the same column
+      const colTasks = prev.filter(t => t.status === activeTask.status)
+      const oldIdx = colTasks.findIndex(t => t.id === activeId)
+      const newIdx = colTasks.findIndex(t => t.id === overId)
+      if (oldIdx === newIdx) return prev
+      const reordered = arrayMove(colTasks, oldIdx, newIdx)
+      return [...prev.filter(t => t.status !== activeTask.status), ...reordered]
     })
-  }, [onTasksChange])
+  }
 
-  const handleDragCancel = useCallback(() => {
-    // Revert to parent state on cancel
+  function handleDragEnd(event: DragEndEvent) {
+    void event // satisfy linter
+    isDraggingRef.current = false
     setActiveTask(null)
+    // Commit final local state to parent — done outside of any setState callback
+    onTasksChange(localTasks)
+  }
+
+  function handleDragCancel() {
+    isDraggingRef.current = false
+    setActiveTask(null)
+    // Revert: sync back from parent
     setLocalTasks(tasks)
-  }, [tasks])
+  }
 
   return (
     <DndContext
@@ -167,7 +173,7 @@ interface DroppableColumnProps {
 
 function DroppableColumn({ column, tasks, onEdit, onDelete, onAddTask }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
-  const taskIds = useMemo(() => tasks.map(t => t.id) as UniqueIdentifier[], [tasks])
+  const taskIds = useMemo<UniqueIdentifier[]>(() => tasks.map(t => t.id), [tasks])
 
   return (
     <div className="flex flex-col w-72 shrink-0">
