@@ -69,10 +69,32 @@ export default function Home() {
   const total = tasks.length
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
 
+  // Auto-manages completedAt: sets today when moved to 'completado', clears otherwise
+  function applyCompletedAt(task: Task, prevTask?: Task): Task {
+    const today = new Date().toISOString().split('T')[0]
+    if (task.status === 'completado' && prevTask?.status !== 'completado') {
+      return { ...task, completedAt: today }
+    }
+    if (task.status !== 'completado' && task.completedAt) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { completedAt: _, ...rest } = task
+      return rest
+    }
+    return task
+  }
+
   function handleSaveTask(task: Task) {
     setTasks(prev => {
       const exists = prev.find(t => t.id === task.id)
-      return exists ? prev.map(t => t.id === task.id ? task : t) : [...prev, task]
+      const processed = applyCompletedAt(task, exists)
+      return exists ? prev.map(t => t.id === task.id ? processed : t) : [...prev, processed]
+    })
+  }
+
+  function handleTasksChange(updatedTasks: Task[]) {
+    setTasks(prev => {
+      const prevById = Object.fromEntries(prev.map(t => [t.id, t]))
+      return updatedTasks.map(t => applyCompletedAt(t, prevById[t.id]))
     })
   }
 
@@ -180,7 +202,7 @@ export default function Home() {
           <TabsContent value="kanban" className="mt-0">
             <KanbanBoard
               tasks={tasks}
-              onTasksChange={setTasks}
+              onTasksChange={handleTasksChange}
               onEdit={handleEditTask}
               onDelete={handleDeleteTask}
               onAddTask={handleAddTask}

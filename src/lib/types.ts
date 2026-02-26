@@ -9,7 +9,8 @@ export interface Task {
   category: Category
   status: Status
   priority: Priority
-  date?: string
+  date?: string        // Optional start/due date
+  completedAt?: string // Auto-set when moved to 'completado', auto-cleared on move out
   estimatedHours?: number
 }
 
@@ -21,7 +22,7 @@ export interface Column {
 
 export const COLUMNS: Column[] = [
   { id: 'backlog', title: 'Pendiente', color: 'bg-slate-500' },
-  { id: 'en-progreso', title: 'En Progreso', color: 'bg-violet-500' },
+  { id: 'en-progreso', title: 'En Progreso', color: 'bg-amber-500' },
   { id: 'completado', title: 'Completado', color: 'bg-emerald-500' },
 ]
 

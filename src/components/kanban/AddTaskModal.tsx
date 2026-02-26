@@ -34,7 +34,6 @@ const emptyForm = {
   category: 'trabajo' as Category,
   priority: 'media' as Priority,
   status: 'backlog' as Status,
-  date: '',
   estimatedHours: '',
 }
 
@@ -47,7 +46,6 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
         category: editTask.category,
         priority: editTask.priority,
         status: editTask.status,
-        date: editTask.date ?? '',
         estimatedHours: editTask.estimatedHours?.toString() ?? '',
       }
     }
@@ -65,7 +63,7 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
       category: form.category,
       priority: form.priority,
       status: form.status,
-      date: form.date || undefined,
+      ...(editTask?.completedAt ? { completedAt: editTask.completedAt } : {}),
       estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : undefined,
     }
     onSave(task)
@@ -140,32 +138,19 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
             </div>
           </div>
 
-          {/* Status + Date */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Estado</Label>
-              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as Status }))}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="backlog">Pendiente</SelectItem>
-                  <SelectItem value="en-progreso">En Progreso</SelectItem>
-                  <SelectItem value="completado">Completado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="date" className="text-xs">Fecha (opcional)</Label>
-              <Input
-                id="date"
-                type="date"
-                value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                className="h-9"
-              />
-            </div>
+          {/* Status */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Estado</Label>
+            <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as Status }))}>
+              <SelectTrigger className="h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="backlog">Pendiente</SelectItem>
+                <SelectItem value="en-progreso">En Progreso</SelectItem>
+                <SelectItem value="completado">Completado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Estimated hours */}
