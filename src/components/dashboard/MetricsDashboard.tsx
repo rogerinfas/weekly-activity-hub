@@ -1,10 +1,10 @@
 'use client'
 
-import { Task, CATEGORY_HEX, Category } from '@/lib/types'
+import { Task } from '@/lib/types'
 import { WeeklyProgressChart } from './WeeklyProgressChart'
 import { CategoryPieChart } from './CategoryPieChart'
 import { MonthlyHistoryChart } from './MonthlyHistoryChart'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { TrendingUp, Zap, Target, Award } from 'lucide-react'
 import { useMemo } from 'react'
 
