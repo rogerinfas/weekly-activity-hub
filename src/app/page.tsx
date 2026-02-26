@@ -42,7 +42,25 @@ export default function Home() {
     let tasksToSet = INITIAL_TASKS
     if (saved) {
       try {
-        tasksToSet = JSON.parse(saved)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw: any[] = JSON.parse(saved)
+        tasksToSet = raw.map(t => {
+          // Map old 'category' field to 'project' if needed
+          const categoryToProject: Record<string, string> = {
+            trabajo: 'desarrollo',
+            aprendizaje: 'desarrollo',
+            salud: 'personal',
+            personal: 'personal',
+            otro: 'otro',
+          }
+          return {
+            ...t,
+            project: t.project ?? categoryToProject[t.category] ?? 'otro',
+            // Remove legacy fields
+            category: undefined,
+            priority: undefined,
+          } as Task
+        })
       } catch (e) {
         console.error('Failed to load tasks', e)
       }
