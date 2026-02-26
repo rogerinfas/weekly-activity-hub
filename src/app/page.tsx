@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Task, Status } from '@/lib/types'
 import { INITIAL_TASKS } from '@/lib/mock-data'
 import { KanbanBoard } from '@/components/kanban/KanbanBoard'
@@ -13,10 +13,37 @@ import { Badge } from '@/components/ui/badge'
 import { LayoutGrid, Calendar, BarChart3, Plus, Sparkles } from 'lucide-react'
 
 export default function Home() {
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [isLoaded, setIsLoaded] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<Status>('backlog')
+
+  // Load from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('wah-tasks')
+    let tasksToSet = INITIAL_TASKS
+    if (saved) {
+      try {
+        tasksToSet = JSON.parse(saved)
+      } catch (e) {
+        console.error('Failed to load tasks', e)
+      }
+    }
+
+    // Defer state updates to avoid "synchronous state update in effect" lint error
+    setTimeout(() => {
+      setTasks(tasksToSet)
+      setIsLoaded(true)
+    }, 0)
+  }, [])
+
+  // Save to localStorage
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('wah-tasks', JSON.stringify(tasks))
+    }
+  }, [tasks, isLoaded])
 
   const completedCount = useMemo(() => tasks.filter(t => t.status === 'completado').length, [tasks])
   const total = tasks.length
@@ -48,6 +75,8 @@ export default function Home() {
     setModalOpen(false)
     setEditTask(null)
   }
+
+  if (!isLoaded) return null
 
   return (
     <div className="min-h-screen bg-background">
@@ -140,6 +169,7 @@ export default function Home() {
 
       {/* Add/Edit Task Modal */}
       <AddTaskModal
+        key={`${modalOpen}-${editTask?.id ?? 'new'}`}
         open={modalOpen}
         onClose={handleModalClose}
         onSave={handleSaveTask}

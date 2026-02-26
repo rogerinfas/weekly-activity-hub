@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Task, Category, Priority, Status } from '@/lib/types'
 import {
   Dialog,
@@ -39,11 +39,9 @@ const emptyForm = {
 }
 
 export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }: AddTaskModalProps) {
-  const [form, setForm] = useState(emptyForm)
-
-  useEffect(() => {
+  const [form, setForm] = useState(() => {
     if (editTask) {
-      setForm({
+      return {
         title: editTask.title,
         description: editTask.description ?? '',
         category: editTask.category,
@@ -51,11 +49,10 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
         status: editTask.status,
         date: editTask.date ?? '',
         estimatedHours: editTask.estimatedHours?.toString() ?? '',
-      })
-    } else {
-      setForm({ ...emptyForm, status: defaultStatus ?? 'backlog' })
+      }
     }
-  }, [editTask, defaultStatus, open])
+    return { ...emptyForm, status: defaultStatus ?? 'backlog' }
+  })
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
