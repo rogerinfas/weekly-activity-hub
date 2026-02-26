@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Task, Category, Priority, Status } from '@/lib/types'
+import { Task, Project, Status } from '@/lib/types'
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -31,8 +32,7 @@ interface AddTaskModalProps {
 const emptyForm = {
   title: '',
   description: '',
-  category: 'trabajo' as Category,
-  priority: 'media' as Priority,
+  project: 'desarrollo' as Project,
   status: 'backlog' as Status,
   estimatedHours: '',
 }
@@ -43,8 +43,7 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
       return {
         title: editTask.title,
         description: editTask.description ?? '',
-        category: editTask.category,
-        priority: editTask.priority,
+        project: editTask.project,
         status: editTask.status,
         estimatedHours: editTask.estimatedHours?.toString() ?? '',
       }
@@ -60,8 +59,7 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
       id: editTask?.id ?? crypto.randomUUID(),
       title: form.title.trim(),
       description: form.description.trim() || undefined,
-      category: form.category,
-      priority: form.priority,
+      project: form.project,
       status: form.status,
       ...(editTask?.completedAt ? { completedAt: editTask.completedAt } : {}),
       estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : undefined,
@@ -93,69 +91,59 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
             />
           </div>
 
-          {/* Description */}
+          {/* Description — optional */}
           <div className="space-y-1.5">
-            <Label htmlFor="desc" className="text-xs">Descripción</Label>
-            <Input
+            <Label htmlFor="desc" className="text-xs text-muted-foreground">
+              Descripción <span className="text-muted-foreground/60">(opcional)</span>
+            </Label>
+            <Textarea
               id="desc"
-              placeholder="Detalles opcionales..."
+              placeholder="Añade detalles si quieres..."
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              className="h-9"
+              className="resize-none text-sm min-h-[64px]"
+              rows={2}
             />
           </div>
 
-          {/* Category + Priority */}
+          {/* Project + Status */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Categoría</Label>
-              <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v as Category }))}>
+              <Label className="text-xs">Proyecto</Label>
+              <Select value={form.project} onValueChange={v => setForm(f => ({ ...f, project: v as Project }))}>
                 <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="trabajo">Trabajo</SelectItem>
+                  <SelectItem value="desarrollo">Desarrollo</SelectItem>
+                  <SelectItem value="diseño">Diseño</SelectItem>
+                  <SelectItem value="marketing">Marketing</SelectItem>
                   <SelectItem value="personal">Personal</SelectItem>
-                  <SelectItem value="salud">Salud</SelectItem>
-                  <SelectItem value="aprendizaje">Aprendizaje</SelectItem>
                   <SelectItem value="otro">Otro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Prioridad</Label>
-              <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v as Priority }))}>
+              <Label className="text-xs">Estado</Label>
+              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as Status }))}>
                 <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="baja">Baja</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="backlog">Pendiente</SelectItem>
+                  <SelectItem value="en-progreso">En Progreso</SelectItem>
+                  <SelectItem value="completado">Completado</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Status */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Estado</Label>
-            <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v as Status }))}>
-              <SelectTrigger className="h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="backlog">Pendiente</SelectItem>
-                <SelectItem value="en-progreso">En Progreso</SelectItem>
-                <SelectItem value="completado">Completado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Estimated hours */}
           <div className="space-y-1.5">
-            <Label htmlFor="hours" className="text-xs">Horas estimadas</Label>
+            <Label htmlFor="hours" className="text-xs text-muted-foreground">
+              Horas estimadas <span className="text-muted-foreground/60">(opcional)</span>
+            </Label>
             <Input
               id="hours"
               type="number"

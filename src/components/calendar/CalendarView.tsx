@@ -15,7 +15,7 @@ import {
   subMonths,
 } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Task, CATEGORY_DOT_COLORS } from '@/lib/types'
+import { Task, PROJECT_DOT_COLORS } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -124,7 +124,7 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
                       )}
                       onClick={e => { e.stopPropagation(); onEditTask(task) }}
                     >
-                      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', CATEGORY_DOT_COLORS[task.category])} />
+                      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', PROJECT_DOT_COLORS[task.project])} />
                       <span className="text-[10px] text-foreground/70 truncate leading-tight">
                         {task.title}
                       </span>
@@ -193,10 +193,10 @@ function TaskSideItem({ task, onEdit }: { task: Task; onEdit: (t: Task) => void 
         'bg-muted/40 hover:bg-muted/70 transition-colors group',
       )}
     >
-      <span className={cn('w-2 h-2 rounded-full mt-1 shrink-0', CATEGORY_DOT_COLORS[task.category])} />
+      <span className={cn('w-2 h-2 rounded-full mt-1 shrink-0', PROJECT_DOT_COLORS[task.project])} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-foreground truncate">{task.title}</p>
-        <p className="text-[10px] text-muted-foreground capitalize">{task.category} · {task.priority}</p>
+        <p className="text-[10px] text-muted-foreground capitalize">{task.project}</p>
       </div>
     </button>
   )

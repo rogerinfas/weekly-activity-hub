@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Task, CATEGORY_HEX, Category } from '@/lib/types'
+import { Task, PROJECT_HEX, PROJECT_LABELS, Project } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   PieChart,
@@ -16,31 +16,23 @@ interface CategoryPieChartProps {
   tasks: Task[]
 }
 
-const CATEGORY_LABELS: Record<Category, string> = {
-  trabajo: 'Trabajo',
-  personal: 'Personal',
-  salud: 'Salud',
-  aprendizaje: 'Aprendizaje',
-  otro: 'Otro',
-}
-
 export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
   const data = useMemo(() => {
     const counts = tasks.reduce<Record<string, number>>((acc, t) => {
-      acc[t.category] = (acc[t.category] ?? 0) + 1
+      acc[t.project] = (acc[t.project] ?? 0) + 1
       return acc
     }, {})
-    return Object.entries(counts).map(([cat, count]) => ({
-      name: CATEGORY_LABELS[cat as Category],
+    return Object.entries(counts).map(([proj, count]) => ({
+      name: PROJECT_LABELS[proj as Project] ?? proj,
       value: count,
-      color: CATEGORY_HEX[cat as Category],
+      color: PROJECT_HEX[proj as Project] ?? '#64748b',
     }))
   }, [tasks])
 
   return (
     <Card className="rounded-2xl border-border/60 shadow-sm">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">Distribución por categoría</CardTitle>
+        <CardTitle className="text-sm font-semibold">Distribución por proyecto</CardTitle>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (

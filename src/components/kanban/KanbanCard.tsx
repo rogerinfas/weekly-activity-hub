@@ -2,7 +2,7 @@
 
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Task, CATEGORY_COLORS, PRIORITY_COLORS } from '@/lib/types'
+import { Task, PROJECT_COLORS, PROJECT_LABELS } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
 import { Clock, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -42,11 +42,11 @@ export function KanbanCard({ task, onEdit, onDelete }: KanbanCardProps) {
         isDragging && 'opacity-30 scale-95',
       )}
     >
+      {/* Title + action buttons */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <h3 className="text-sm font-medium leading-snug text-foreground line-clamp-2 flex-1">
           {task.title}
         </h3>
-        {/* Buttons stop propagation so clicking doesn't drag */}
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <Button
             size="icon"
@@ -69,24 +69,20 @@ export function KanbanCard({ task, onEdit, onDelete }: KanbanCardProps) {
         </div>
       </div>
 
+      {/* Description */}
       {task.description && (
         <p className="text-xs text-muted-foreground mb-2.5 line-clamp-2 leading-relaxed">
           {task.description}
         </p>
       )}
 
+      {/* Footer: project badge + hours */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <Badge
           variant="outline"
-          className={cn('text-[10px] font-medium px-1.5 py-0 h-5 capitalize', CATEGORY_COLORS[task.category])}
+          className={cn('text-[10px] font-medium px-1.5 py-0 h-5 capitalize', PROJECT_COLORS[task.project])}
         >
-          {task.category}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={cn('text-[10px] font-medium px-1.5 py-0 h-5 capitalize border-0', PRIORITY_COLORS[task.priority])}
-        >
-          {task.priority}
+          {PROJECT_LABELS[task.project]}
         </Badge>
         {task.estimatedHours && (
           <span className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground">
@@ -96,7 +92,7 @@ export function KanbanCard({ task, onEdit, onDelete }: KanbanCardProps) {
         )}
       </div>
 
-      {/* Completion date - auto-set by the system */}
+      {/* Completion date — auto-set by the system */}
       {task.completedAt && (
         <div className="mt-2 flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-md px-1.5 py-0.5 w-fit">
           <CheckCircle2 className="h-2.5 w-2.5" />
@@ -132,7 +128,7 @@ export function KanbanCardUI({ task, isOverlay }: KanbanCardUIProps) {
         isOverlay && 'shadow-2xl rotate-2 scale-105 cursor-grabbing ring-2 ring-primary/30',
       )}
     >
-      <div className="flex items-start justify-between gap-2 mb-2">
+      <div className="flex items-start gap-2 mb-2">
         <h3 className="text-sm font-medium leading-snug text-foreground line-clamp-2 flex-1">
           {task.title}
         </h3>
@@ -147,15 +143,9 @@ export function KanbanCardUI({ task, isOverlay }: KanbanCardUIProps) {
       <div className="flex items-center gap-1.5 flex-wrap">
         <Badge
           variant="outline"
-          className={cn('text-[10px] font-medium px-1.5 py-0 h-5 capitalize', CATEGORY_COLORS[task.category])}
+          className={cn('text-[10px] font-medium px-1.5 py-0 h-5 capitalize', PROJECT_COLORS[task.project])}
         >
-          {task.category}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={cn('text-[10px] font-medium px-1.5 py-0 h-5 capitalize border-0', PRIORITY_COLORS[task.priority])}
-        >
-          {task.priority}
+          {PROJECT_LABELS[task.project]}
         </Badge>
         {task.estimatedHours && (
           <span className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground">
@@ -164,16 +154,6 @@ export function KanbanCardUI({ task, isOverlay }: KanbanCardUIProps) {
           </span>
         )}
       </div>
-
-      {task.date && (
-        <div className="mt-2 text-[10px] text-muted-foreground bg-muted/60 rounded-md px-1.5 py-0.5 inline-block">
-          {new Date(task.date + 'T00:00:00').toLocaleDateString('es-ES', {
-            weekday: 'short',
-            day: 'numeric',
-            month: 'short',
-          })}
-        </div>
-      )}
     </div>
   )
 }

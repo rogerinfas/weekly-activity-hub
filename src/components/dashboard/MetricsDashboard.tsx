@@ -15,18 +15,18 @@ interface MetricsDashboardProps {
 export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
   const stats = useMemo(() => {
     const completed = tasks.filter(t => t.status === 'completado').length
-    const highPriorityDone = tasks.filter(t => t.status === 'completado' && t.priority === 'alta').length
+    const inProgress = tasks.filter(t => t.status === 'en-progreso').length
     const totalHours = tasks
       .filter(t => t.status === 'completado')
       .reduce((acc, t) => acc + (t.estimatedHours ?? 0), 0)
-    const topCategory = Object.entries(
+    const topProject = Object.entries(
       tasks.reduce<Record<string, number>>((acc, t) => {
-        acc[t.category] = (acc[t.category] ?? 0) + 1
+        acc[t.project] = (acc[t.project] ?? 0) + 1
         return acc
       }, {})
     ).sort((a, b) => b[1] - a[1])[0]
 
-    return { completed, highPriorityDone, totalHours, topCategory }
+    return { completed, inProgress, totalHours, topProject }
   }, [tasks])
 
   return (
@@ -42,24 +42,24 @@ export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
         />
         <KpiCard
           icon={<Zap className="h-4 w-4" />}
-          label="Alta prioridad hechas"
-          value={stats.highPriorityDone}
-          color="text-red-500"
-          bg="bg-red-500/10"
+          label="En progreso"
+          value={stats.inProgress}
+          color="text-amber-500"
+          bg="bg-amber-500/10"
         />
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" />}
           label="Horas completadas"
           value={`${stats.totalHours.toFixed(1)}h`}
-          color="text-violet-500"
-          bg="bg-violet-500/10"
+          color="text-blue-500"
+          bg="bg-blue-500/10"
         />
         <KpiCard
           icon={<Award className="h-4 w-4" />}
-          label="Categoría líder"
-          value={stats.topCategory ? stats.topCategory[0] : '—'}
-          color="text-amber-500"
-          bg="bg-amber-500/10"
+          label="Proyecto líder"
+          value={stats.topProject ? stats.topProject[0] : '—'}
+          color="text-violet-500"
+          bg="bg-violet-500/10"
           capitalize
         />
       </div>
