@@ -10,7 +10,7 @@ import { MetricsDashboard } from '@/components/dashboard/MetricsDashboard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { LayoutGrid, Calendar, BarChart3, Plus, Sparkles } from 'lucide-react'
+import { LayoutGrid, Calendar, BarChart3, Plus, Sparkles, Moon, Sun } from 'lucide-react'
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -18,6 +18,23 @@ export default function Home() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editTask, setEditTask] = useState<Task | null>(null)
   const [defaultStatus, setDefaultStatus] = useState<Status>('backlog')
+  const [isDark, setIsDark] = useState(false)
+
+  // Load dark mode preference
+  useEffect(() => {
+    const saved = localStorage.getItem('wah-dark')
+    const prefersDark = saved !== null ? saved === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsDark(prefersDark)
+    document.documentElement.classList.toggle('dark', prefersDark)
+  }, [])
+
+  function toggleDark() {
+    const next = !isDark
+    setIsDark(next)
+    document.documentElement.classList.toggle('dark', next)
+    localStorage.setItem('wah-dark', String(next))
+  }
 
   // Load from localStorage
   useEffect(() => {
@@ -109,14 +126,26 @@ export default function Home() {
             </Badge>
           </div>
 
-          <Button
-            size="sm"
-            className="gap-1.5 h-8 text-xs rounded-full"
-            onClick={() => handleAddTask('backlog')}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Nueva tarea</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={toggleDark}
+              aria-label="Cambiar modo oscuro"
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+
+            <Button
+              size="sm"
+              className="gap-1.5 h-8 text-xs rounded-full"
+              onClick={() => handleAddTask('backlog')}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Nueva tarea</span>
+            </Button>
+          </div>
         </div>
       </header>
 
