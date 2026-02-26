@@ -1,6 +1,8 @@
 export type Project = 'desarrollo' | 'diseño' | 'marketing' | 'personal' | 'otro'
 export type Status = 'backlog' | 'en-progreso' | 'completado'
 
+// localStorage.removeItem('wah-tasks')
+
 export interface Task {
   id: string
   title: string
