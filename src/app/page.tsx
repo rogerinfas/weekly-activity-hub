@@ -5,18 +5,23 @@ import { Task } from '@/lib/types'
 import { KanbanBoard } from '@/components/kanban/KanbanBoard'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { MetricsDashboard } from '@/components/dashboard/MetricsDashboard'
+import { WeekFilter } from '@/components/dashboard/WeekFilter'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '@/lib/api/tasks'
+import { type WeekRange, getWeekRange, parseTaskDate } from '@/lib/date-utils'
 
 export default function Home() {
   const queryClient = useQueryClient()
   const [isDark, setIsDark] = useState(false)
   const [activeTab, setActiveTab] = useState<'kanban' | 'calendario' | 'dashboard'>('kanban')
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+  const [kanbanWeekRange, setKanbanWeekRange] = useState<WeekRange | undefined>(() =>
+    getWeekRange(new Date()),
+  )
 
   // -- React Query Data Management --
   const { data: tasks = [], isLoading: isLoaded } = useQuery<Task[]>({
@@ -65,6 +70,24 @@ export default function Home() {
   const completedCount = useMemo(() => tasks.filter(t => t.status === 'completado').length, [tasks])
   const total = tasks.length
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
+
+  const kanbanTasks = useMemo(() => {
+    if (!kanbanWeekRange) return tasks
+
+    const { startDate, endDate } = kanbanWeekRange
+    const startOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+    const endOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+
+    return tasks.filter(task => {
+      const input = task.date ?? task.createdAt
+      if (!input) return false
+
+      const parsed = parseTaskDate(input)
+      const dateOnly = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
+
+      return dateOnly >= startOnly && dateOnly <= endOnly
+    })
+  }, [tasks, kanbanWeekRange])
 
   function handleSaveTask(task: Task) {
     const exists = tasks.find(t => t.id === task.id)
@@ -173,9 +196,19 @@ export default function Home() {
           </TabsList>
 
           {/* Kanban Tab */}
-          <TabsContent value="kanban" className="mt-0">
+          <TabsContent value="kanban" className="mt-0 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">
+                Kanban semanal
+              </h2>
+              <WeekFilter
+                value={kanbanWeekRange}
+                onChange={setKanbanWeekRange}
+                title="Semana"
+              />
+            </div>
             <KanbanBoard
-              tasks={tasks}
+              tasks={kanbanTasks}
               onTasksChange={handleTasksChange}
               onDelete={handleDeleteTask}
               onUpsertTask={handleSaveTask}
