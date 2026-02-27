@@ -50,7 +50,8 @@ function tasksToColumnMap(tasks: Task[]): ColumnMap {
 function applyColumnMap(source: Task[], columnMap: ColumnMap): Task[] {
   const byId = Object.fromEntries(source.map(t => [t.id, t]))
   return (Object.entries(columnMap) as [Status, UniqueIdentifier[]][]).flatMap(
-    ([status, ids]) => ids.map(id => ({ ...byId[id as string], status }))
+    ([status, ids]) =>
+      ids.map((id, index) => ({ ...byId[id as string], status, order: index }))
   )
 }
 
