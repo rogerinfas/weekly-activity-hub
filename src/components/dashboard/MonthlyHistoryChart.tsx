@@ -74,14 +74,24 @@ export function MonthlyHistoryChart({ tasks }: MonthlyHistoryChartProps) {
               axisLine={false}
               tickLine={false}
             />
-            <ChartTooltip
-              content={<ChartTooltipContent labelKey="date" />}
-            />
-            <ChartLegend content={<ChartLegendContent />} />
+            <ChartTooltip content={<ChartTooltipContent labelKey="date" />} />
             <Bar dataKey="total" fill="var(--color-total)" radius={[4, 4, 0, 0]} />
             <Bar dataKey="completadas" fill="var(--color-completadas)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ChartContainer>
+
+        {/* Custom Legend (JSX) to avoid Recharts v3/React 19 types conflicts */}
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5 mt-2">
+          {Object.entries(chartConfig).map(([key, config]) => (
+            <div key={key} className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-[2px]"
+                style={{ backgroundColor: config.color }}
+              />
+              <span className="text-[11px] text-muted-foreground">{config.label}</span>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )

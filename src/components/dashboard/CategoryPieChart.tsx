@@ -6,9 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart, Pie, Cell, Tooltip } from 'recharts'
 import {
   ChartContainer,
-  ChartTooltipContent,
-  ChartLegendContent,
-  ChartLegend,
   type ChartConfig,
 } from '@/components/ui/chart'
 
@@ -32,10 +29,7 @@ export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
 
   const chartConfig = useMemo(() => {
     return data.reduce<ChartConfig>((acc, entry) => {
-      acc[entry.project] = {
-        label: entry.name,
-        color: entry.fill,
-      }
+      acc[entry.project] = { label: entry.name, color: entry.fill }
       return acc
     }, {})
   }, [data])
@@ -60,8 +54,8 @@ export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold">Distribución por proyecto</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="mx-auto max-h-[240px] w-full">
+      <CardContent className="flex flex-col items-center gap-3">
+        <ChartContainer config={chartConfig} className="mx-auto max-h-[200px] w-full">
           <PieChart>
             <Pie
               data={data}
@@ -69,8 +63,8 @@ export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
               nameKey="name"
               cx="50%"
               cy="50%"
-              innerRadius={55}
-              outerRadius={85}
+              innerRadius={50}
+              outerRadius={80}
               paddingAngle={3}
               strokeWidth={0}
             >
@@ -78,10 +72,31 @@ export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
                 <Cell key={entry.project} fill={entry.fill} />
               ))}
             </Pie>
-            <Tooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
-            <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+            <Tooltip
+              contentStyle={{
+                background: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '8px',
+                fontSize: '12px',
+              }}
+              formatter={(value, name) => [`${value} tareas`, name]}
+            />
           </PieChart>
         </ChartContainer>
+
+        {/* Leyenda custom — sin problemas de tipos */}
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1.5">
+          {data.map((entry) => (
+            <div key={entry.project} className="flex items-center gap-1.5">
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: entry.fill }}
+              />
+              <span className="text-[11px] text-muted-foreground">{entry.name}</span>
+              <span className="text-[11px] font-medium tabular-nums">{entry.value}</span>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )
