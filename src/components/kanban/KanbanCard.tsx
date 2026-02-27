@@ -133,7 +133,11 @@ function CardContent({ task, projects, isEditing, onEdit, onDelete, onSave, onCa
     if (!isEditing) return
     function handleClickOutside(e: MouseEvent) {
       if (formRef.current && !formRef.current.contains(e.target as Node)) {
-        handleSave()
+        if (draft.title.trim()) {
+          handleSave()
+        } else {
+          onCancel()
+        }
       }
     }
     document.addEventListener('mousedown', handleClickOutside)

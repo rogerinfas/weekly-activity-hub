@@ -30,7 +30,7 @@ import { Button } from '@/components/ui/button'
 interface KanbanBoardProps {
   tasks: Task[]
   projects: ApiProject[]
-  onTasksChange: (tasks: Task[]) => void
+  onDragCommit: (tasks: Task[]) => void
   onDelete: (id: string) => void
   onCreateTask: (task: Task) => void
   onUpsertTask: (task: Task) => void
@@ -42,7 +42,10 @@ type ColumnMap = Record<Status, UniqueIdentifier[]>
 
 function tasksToColumnMap(tasks: Task[]): ColumnMap {
   return COLUMNS.reduce((acc, col) => {
-    acc[col.id] = tasks.filter(t => t.status === col.id).map(t => t.id)
+    acc[col.id] = tasks
+      .filter(t => t.status === col.id)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+      .map(t => t.id)
     return acc
   }, {} as ColumnMap)
 }
@@ -51,21 +54,29 @@ function applyColumnMap(source: Task[], columnMap: ColumnMap): Task[] {
   const byId = Object.fromEntries(source.map(t => [t.id, t]))
   return (Object.entries(columnMap) as [Status, UniqueIdentifier[]][]).flatMap(
     ([status, ids]) =>
-      ids.map((id, index) => ({ ...byId[id as string], status, order: index })),
+      ids
+        .filter(id => byId[id as string] != null)
+        .map((id, index) => ({
+          ...byId[id as string],
+          status,
+          order: index,
+        })),
   )
 }
 
 export function KanbanBoard({
   tasks,
   projects,
-  onTasksChange,
+  onDragCommit,
   onDelete,
   onCreateTask,
   onUpsertTask,
   editingTaskId,
   onEditingChange,
 }: KanbanBoardProps) {
-  const [columnMap, setColumnMap] = useState<ColumnMap>(() => tasksToColumnMap(tasks))
+  const [columnMap, setColumnMap] = useState<ColumnMap>(() =>
+    tasksToColumnMap(tasks),
+  )
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const lastOverId = useRef<UniqueIdentifier | null>(null)
   const recentlyMovedToNewContainer = useRef(false)
@@ -153,7 +164,11 @@ export function KanbanBoard({
     onEditingChange(newTask.id)
   }
 
-  function handleDragStart({ active }: { active: { id: UniqueIdentifier } }) {
+  function handleDragStart({
+    active,
+  }: {
+    active: { id: UniqueIdentifier }
+  }) {
     setActiveId(active.id)
     clonedColumnMap.current = columnMap
   }
@@ -250,7 +265,7 @@ export function KanbanBoard({
       setColumnMap(finalMap)
     }
 
-    onTasksChange(applyColumnMap(tasksRef.current, finalMap))
+    onDragCommit(applyColumnMap(tasksRef.current, finalMap))
     setActiveId(null)
     clonedColumnMap.current = null
   }
@@ -341,7 +356,7 @@ function DroppableColumn({
             {column.title}
           </h2>
           <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 font-medium tabular-nums">
-            {taskIds.length}
+            {orderedTasks.length}
           </span>
         </div>
         <Button
@@ -391,7 +406,7 @@ function DroppableColumn({
           })}
         </SortableContext>
 
-        {taskIds.length === 0 && (
+        {orderedTasks.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center py-8 text-muted-foreground/40">
             <div className="text-xs text-center">Arrastra tarjetas aquí</div>
           </div>

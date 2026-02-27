@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { Task, ApiProject } from '@/lib/types'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { Task, ApiProject, Status } from '@/lib/types'
 import { KanbanBoard } from '@/components/kanban/KanbanBoard'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { MetricsDashboard } from '@/components/dashboard/MetricsDashboard'
@@ -10,7 +10,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ProjectManagerDialog } from '@/components/projects/ProjectManagerDialog'
-import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun, Settings2 } from 'lucide-react'
+import {
+  LayoutGrid,
+  Calendar,
+  BarChart3,
+  Sparkles,
+  Moon,
+  Sun,
+  Settings2,
+} from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '@/lib/api/tasks'
 import { projectsApi } from '@/lib/api/projects'
@@ -20,14 +28,26 @@ function filterByWeek(tasks: Task[], range: WeekRange | undefined): Task[] {
   if (!range) return tasks
 
   const { startDate, endDate } = range
-  const startOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-  const endOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+  const startOnly = new Date(
+    startDate.getFullYear(),
+    startDate.getMonth(),
+    startDate.getDate(),
+  )
+  const endOnly = new Date(
+    endDate.getFullYear(),
+    endDate.getMonth(),
+    endDate.getDate(),
+  )
 
   return tasks.filter(task => {
     const input = task.date ?? task.createdAt
     if (!input) return true
     const parsed = parseTaskDate(input)
-    const dateOnly = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
+    const dateOnly = new Date(
+      parsed.getFullYear(),
+      parsed.getMonth(),
+      parsed.getDate(),
+    )
     return dateOnly >= startOnly && dateOnly <= endOnly
   })
 }
@@ -35,12 +55,15 @@ function filterByWeek(tasks: Task[], range: WeekRange | undefined): Task[] {
 export default function Home() {
   const queryClient = useQueryClient()
   const [isDark, setIsDark] = useState(false)
-  const [activeTab, setActiveTab] = useState<'kanban' | 'calendario' | 'dashboard'>('kanban')
+  const [activeTab, setActiveTab] = useState<
+    'kanban' | 'calendario' | 'dashboard'
+  >('kanban')
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [kanbanWeekRange, setKanbanWeekRange] = useState<WeekRange | undefined>(() =>
-    getWeekRange(new Date()),
-  )
+  const [kanbanWeekRange, setKanbanWeekRange] = useState<
+    WeekRange | undefined
+  >(() => getWeekRange(new Date()))
   const [projectsOpen, setProjectsOpen] = useState(false)
+  const dragBatchCounter = useRef(0)
 
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks'],
@@ -77,7 +100,9 @@ export default function Home() {
   useEffect(() => {
     const saved = localStorage.getItem('wah-dark')
     const prefersDark =
-      saved !== null ? saved === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches
+      saved !== null
+        ? saved === 'true'
+        : window.matchMedia('(prefers-color-scheme: dark)').matches
     setIsDark(prefersDark)
     document.documentElement.classList.toggle('dark', prefersDark)
   }, [])
@@ -99,16 +124,21 @@ export default function Home() {
     [kanbanTasks],
   )
   const total = kanbanTasks.length
-  const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
+  const progressPct =
+    total > 0 ? Math.round((completedCount / total) * 100) : 0
 
   function handleCreateTask(task: Task) {
-    queryClient.setQueryData<Task[]>(['tasks'], old => [...(old ?? []), task])
+    queryClient.setQueryData<Task[]>(['tasks'], old => [
+      ...(old ?? []),
+      task,
+    ])
   }
 
   function handleSaveTask(task: Task) {
-    const existsInServer = tasks.find(t => t.id === task.id)
+    const cached = tasks.find(t => t.id === task.id)
+    const isOnServer = cached?.createdAt != null
 
-    if (existsInServer) {
+    if (isOnServer) {
       queryClient.setQueryData<Task[]>(['tasks'], old =>
         (old ?? []).map(t => (t.id === task.id ? { ...t, ...task } : t)),
       )
@@ -117,27 +147,55 @@ export default function Home() {
       queryClient.setQueryData<Task[]>(['tasks'], old =>
         (old ?? []).map(t => (t.id === task.id ? task : t)),
       )
-      createTaskMutation.mutate(task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
+      createTaskMutation.mutate(
+        task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>,
+      )
     }
   }
 
-  function handleTasksChange(updatedTasks: Task[]) {
+  function handleDragCommit(updatedTasks: Task[]) {
     const prevById = Object.fromEntries(tasks.map(t => [t.id, t]))
+    const changes: { id: string; status: Status; order: number }[] = []
 
-    updatedTasks.forEach(t => {
+    for (const t of updatedTasks) {
       const prev = prevById[t.id]
-      if (prev && JSON.stringify(prev) !== JSON.stringify(t)) {
-        updateTaskMutation.mutate({ id: t.id!, payload: t })
+      if (!prev || !prev.createdAt) continue
+      if (prev.status !== t.status || prev.order !== t.order) {
+        changes.push({ id: t.id, status: t.status, order: t.order ?? 0 })
+      }
+    }
+
+    if (changes.length === 0) return
+
+    queryClient.setQueryData<Task[]>(['tasks'], old => {
+      if (!old) return old
+      const changeById = new Map(changes.map(c => [c.id, c]))
+      return old.map(t => {
+        const c = changeById.get(t.id)
+        return c ? { ...t, status: c.status, order: c.order } : t
+      })
+    })
+
+    dragBatchCounter.current += 1
+    const batchId = dragBatchCounter.current
+
+    Promise.allSettled(
+      changes.map(c =>
+        tasksApi.update(c.id, { status: c.status, order: c.order }),
+      ),
+    ).then(() => {
+      if (dragBatchCounter.current === batchId) {
+        queryClient.invalidateQueries({ queryKey: ['tasks'] })
       }
     })
   }
 
   function handleDeleteTask(id: string) {
-    const existsInServer = tasks.find(t => t.id === id)
+    const cached = tasks.find(t => t.id === id)
     queryClient.setQueryData<Task[]>(['tasks'], old =>
       (old ?? []).filter(t => t.id !== id),
     )
-    if (existsInServer) {
+    if (cached?.createdAt) {
       deleteTaskMutation.mutate(id)
     }
   }
@@ -195,7 +253,11 @@ export default function Home() {
               onClick={toggleDark}
               aria-label="Cambiar modo oscuro"
             >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {isDark ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
@@ -235,7 +297,9 @@ export default function Home() {
 
           <TabsContent value="kanban" className="mt-0 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">Kanban semanal</h2>
+              <h2 className="text-sm font-semibold text-foreground">
+                Kanban semanal
+              </h2>
               <WeekFilter
                 value={kanbanWeekRange}
                 onChange={setKanbanWeekRange}
@@ -245,7 +309,7 @@ export default function Home() {
             <KanbanBoard
               tasks={kanbanTasks}
               projects={projects}
-              onTasksChange={handleTasksChange}
+              onDragCommit={handleDragCommit}
               onDelete={handleDeleteTask}
               onCreateTask={handleCreateTask}
               onUpsertTask={handleSaveTask}
@@ -255,7 +319,11 @@ export default function Home() {
           </TabsContent>
 
           <TabsContent value="calendario" className="mt-0">
-            <CalendarView tasks={tasks} projects={projects} onEditTask={handleCalendarEdit} />
+            <CalendarView
+              tasks={tasks}
+              projects={projects}
+              onEditTask={handleCalendarEdit}
+            />
           </TabsContent>
 
           <TabsContent value="dashboard" className="mt-0">
