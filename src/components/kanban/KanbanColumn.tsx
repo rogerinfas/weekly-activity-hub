@@ -14,9 +14,21 @@ interface KanbanColumnProps {
   onEdit: (task: Task) => void
   onDelete: (id: string) => void
   onAddTask: (status: Task['status']) => void
+  editingTaskId?: string | null
+  onSave?: (task: Task) => void
+  onCancel?: () => void
 }
 
-export function KanbanColumn({ column, tasks, onEdit, onDelete, onAddTask }: KanbanColumnProps) {
+export function KanbanColumn({
+  column,
+  tasks,
+  onEdit,
+  onDelete,
+  onAddTask,
+  editingTaskId = null,
+  onSave,
+  onCancel,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
 
   return (
@@ -50,14 +62,26 @@ export function KanbanColumn({ column, tasks, onEdit, onDelete, onAddTask }: Kan
         )}
       >
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-          {tasks.map(task => (
-            <KanbanCard
-              key={task.id}
-              task={task}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
+          {tasks.map(task => {
+            const isEditing = editingTaskId === task.id
+            const isNew = !task.title?.trim()
+            return (
+              <KanbanCard
+                key={task.id}
+                task={task}
+                isEditing={isEditing}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onSave={updated => {
+                  onSave?.(updated)
+                }}
+                onCancel={() => {
+                  if (isNew) onDelete(task.id)
+                  onCancel?.()
+                }}
+              />
+            )
+          })}
         </SortableContext>
 
         {tasks.length === 0 && (
