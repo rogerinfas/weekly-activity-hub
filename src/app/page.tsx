@@ -26,7 +26,7 @@ function filterByWeek(tasks: Task[], range: WeekRange | undefined): Task[] {
 
   return tasks.filter(task => {
     const input = task.date ?? task.createdAt
-    if (!input) return false
+    if (!input) return true
     const parsed = parseTaskDate(input)
     const dateOnly = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
     return dateOnly >= startOnly && dateOnly <= endOnly
