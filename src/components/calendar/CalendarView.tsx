@@ -35,10 +35,16 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [mode, setMode] = useState<CalendarMode>('month')
 
-  const tasksWithDate = tasks.filter(t => t.date)
+  // Effective date: use `date` (manual) if set, otherwise fall back to `createdAt`
+  const getEffectiveDate = (t: Task): string | undefined => t.date ?? t.createdAt
+
+  const tasksWithDate = tasks.filter(t => getEffectiveDate(t))
 
   const getTasksForDay = (day: Date) =>
-    tasksWithDate.filter(t => isSameDay(new Date(t.date! + 'T00:00:00'), day))
+    tasksWithDate.filter(t => {
+      const d = getEffectiveDate(t)
+      return d ? isSameDay(new Date(d + 'T00:00:00'), day) : false
+    })
 
   // ---- Navigation label ----
   const navLabel = useMemo(() => {
@@ -179,21 +185,7 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
           </div>
         )}
 
-        {/* Unscheduled tasks */}
-        <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-4 flex-1">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            Sin fecha
-          </h3>
-          <div className="flex flex-col gap-2 max-h-80 overflow-y-auto">
-            {tasks.filter(t => !t.date).length === 0 ? (
-              <p className="text-xs text-muted-foreground">Todas las tareas tienen fecha</p>
-            ) : (
-              tasks.filter(t => !t.date).map(task => (
-                <TaskSideItem key={task.id} task={task} onEdit={onEditTask} />
-              ))
-            )}
-          </div>
-        </div>
+
       </div>
     </div>
   )
@@ -388,6 +380,8 @@ function TaskChip({
 
 function TaskSideItem({ task, onEdit }: { task: Task; onEdit: (t: Task) => void }) {
   const statusLabel = COLUMNS.find(c => c.id === task.status)?.title ?? task.status
+  // Show a hint when the position comes from createdAt rather than an explicit date
+  const isCreatedAtBased = !task.date && !!task.createdAt
 
   return (
     <button
@@ -413,6 +407,9 @@ function TaskSideItem({ task, onEdit }: { task: Task; onEdit: (t: Task) => void 
             {PROJECT_LABELS[task.project]}
           </Badge>
           <span className="text-[9px] text-muted-foreground">{statusLabel}</span>
+          {isCreatedAtBased && (
+            <span className="text-[9px] text-muted-foreground/50 italic">Creación</span>
+          )}
         </div>
       </div>
     </button>

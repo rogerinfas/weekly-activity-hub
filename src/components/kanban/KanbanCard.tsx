@@ -165,7 +165,12 @@ function CardContent({ task, isEditing, onEdit, onDelete, onSave, onCancel }: Ca
             )}
           />
         ) : (
-          <h3 className="text-sm font-medium leading-snug text-foreground line-clamp-2 flex-1">
+          <h3 className={cn(
+            'text-sm font-medium leading-snug line-clamp-2 flex-1',
+            task.status === 'completado'
+              ? 'line-through text-muted-foreground'
+              : 'text-foreground',
+          )}>
             {task.title || <span className="text-muted-foreground/50 italic">Sin título</span>}
           </h3>
         )}
