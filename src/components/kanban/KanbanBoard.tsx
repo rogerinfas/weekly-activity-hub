@@ -409,9 +409,6 @@ function InlineTaskEditor({ task, isNew, onSave, onCancel }: InlineTaskEditorPro
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description ?? '')
   const [project, setProject] = useState<Project>(task.project)
-  const [estimatedHours, setEstimatedHours] = useState(
-    task.estimatedHours != null ? String(task.estimatedHours) : ''
-  )
 
   const canSave = title.trim().length > 0
 
@@ -424,7 +421,6 @@ function InlineTaskEditor({ task, isNew, onSave, onCancel }: InlineTaskEditorPro
       title: title.trim(),
       description: description.trim() || undefined,
       project,
-      estimatedHours: estimatedHours ? parseFloat(estimatedHours) : undefined,
     }
     onSave(updated)
   }
@@ -465,39 +461,20 @@ function InlineTaskEditor({ task, isNew, onSave, onCancel }: InlineTaskEditorPro
         />
       </div>
 
-      <div className="grid grid-cols-[1.3fr,0.9fr] gap-2.5">
-        <div className="space-y-1">
-          <Label className="text-[11px]">Proyecto</Label>
-          <Select value={project} onValueChange={v => setProject(v as Project)}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="desarrollo">Desarrollo</SelectItem>
-              <SelectItem value="diseño">Diseño</SelectItem>
-              <SelectItem value="marketing">Marketing</SelectItem>
-              <SelectItem value="personal">Personal</SelectItem>
-              <SelectItem value="otro">Otro</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor={`hours-${task.id}`} className="text-[11px] text-muted-foreground">
-            Horas (opcional)
-          </Label>
-          <Input
-            id={`hours-${task.id}`}
-            type="number"
-            min="0.25"
-            max="24"
-            step="0.25"
-            placeholder="ej. 1.5"
-            value={estimatedHours}
-            onChange={e => setEstimatedHours(e.target.value)}
-            className="h-8 text-xs"
-          />
-        </div>
+      <div className="space-y-1">
+        <Label className="text-[11px]">Proyecto</Label>
+        <Select value={project} onValueChange={v => setProject(v as Project)}>
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="desarrollo">Desarrollo</SelectItem>
+            <SelectItem value="diseño">Diseño</SelectItem>
+            <SelectItem value="marketing">Marketing</SelectItem>
+            <SelectItem value="personal">Personal</SelectItem>
+            <SelectItem value="otro">Otro</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex justify-end gap-2 pt-1.5">
