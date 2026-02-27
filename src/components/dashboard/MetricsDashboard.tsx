@@ -1,6 +1,6 @@
 'use client'
 
-import { Task } from '@/lib/types'
+import { Task, ApiProject } from '@/lib/types'
 import { WeeklyProgressChart } from './WeeklyProgressChart'
 import { CategoryPieChart } from './CategoryPieChart'
 import { MonthlyHistoryChart } from './MonthlyHistoryChart'
@@ -12,9 +12,10 @@ import { useState, useMemo } from 'react'
 
 interface MetricsDashboardProps {
   tasks: Task[]
+  projects: ApiProject[]
 }
 
-export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
+export function MetricsDashboard({ tasks, projects }: MetricsDashboardProps) {
   // Por defecto inicializamos con la semana actual
   const [selectedWeekRange, setSelectedWeekRange] = useState<WeekRange | undefined>(() => getWeekRange(new Date()))
 
@@ -99,7 +100,7 @@ export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <WeeklyProgressChart tasks={filteredTasks} />
-        <CategoryPieChart tasks={filteredTasks} />
+        <CategoryPieChart tasks={filteredTasks} projects={projects} />
         <div className="lg:col-span-1">
           <MonthlyHistoryChart tasks={filteredTasks} />
         </div>

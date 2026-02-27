@@ -9,10 +9,29 @@ import { WeekFilter } from '@/components/dashboard/WeekFilter'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun } from 'lucide-react'
+import { ProjectManagerDialog } from '@/components/projects/ProjectManagerDialog'
+import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun, Settings2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '@/lib/api/tasks'
+import { projectsApi } from '@/lib/api/projects'
 import { type WeekRange, getWeekRange, parseTaskDate } from '@/lib/date-utils'
+import { ApiProject } from '@/lib/types'
+
+function filterByWeek(tasks: Task[], range: WeekRange | undefined): Task[] {
+  if (!range) return tasks
+
+  const { startDate, endDate } = range
+  const startOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
+  const endOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
+
+  return tasks.filter(task => {
+    const input = task.date ?? task.createdAt
+    if (!input) return true
+    const parsed = parseTaskDate(input)
+    const dateOnly = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
+    return dateOnly >= startOnly && dateOnly <= endOnly
+  })
+}
 
 export default function Home() {
   const queryClient = useQueryClient()
@@ -22,11 +41,16 @@ export default function Home() {
   const [kanbanWeekRange, setKanbanWeekRange] = useState<WeekRange | undefined>(() =>
     getWeekRange(new Date()),
   )
+  const [projectsOpen, setProjectsOpen] = useState(false)
 
-  // -- React Query Data Management --
-  const { data: tasks = [], isLoading: isLoaded } = useQuery<Task[]>({
+  const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks'],
     queryFn: tasksApi.getAll,
+  })
+
+  const { data: projects = [] } = useQuery<ApiProject[]>({
+    queryKey: ['projects'],
+    queryFn: projectsApi.getAll,
   })
 
   const createTaskMutation = useMutation({
@@ -50,12 +74,9 @@ export default function Home() {
     }
   })
 
-
-  // Load dark mode preference
   useEffect(() => {
     const saved = localStorage.getItem('wah-dark')
     const prefersDark = saved !== null ? saved === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsDark(prefersDark)
     document.documentElement.classList.toggle('dark', prefersDark)
   }, [])
@@ -67,8 +88,13 @@ export default function Home() {
     localStorage.setItem('wah-dark', String(next))
   }
 
-  const completedCount = useMemo(() => tasks.filter(t => t.status === 'completado').length, [tasks])
-  const total = tasks.length
+  const kanbanTasks = useMemo(
+    () => filterByWeek(tasks, kanbanWeekRange),
+    [tasks, kanbanWeekRange],
+  )
+
+  const completedCount = useMemo(() => kanbanTasks.filter(t => t.status === 'completado').length, [kanbanTasks])
+  const total = kanbanTasks.length
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
 
   const kanbanTasks = useMemo(() => {
@@ -119,12 +145,8 @@ export default function Home() {
     setEditingTaskId(task.id)
   }
 
-  // Instead of completely hiding all the UI on load, we just show standard UI with empty states or a standard loader
-  // if (isLoaded) return null
-
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-sm border-b border-border/60">
         <div className="max-w-screen-xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
@@ -134,7 +156,6 @@ export default function Home() {
             <span className="text-sm font-semibold text-foreground hidden sm:block">Weekly Activity Hub</span>
           </div>
 
-          {/* Progress pill */}
           <div className="flex items-center gap-2 bg-muted/60 rounded-full px-3 py-1">
             <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
               <div
@@ -150,7 +171,16 @@ export default function Home() {
             </Badge>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => setProjectsOpen(true)}
+              aria-label="Gestionar proyectos"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
             <Button
               size="icon"
               variant="ghost"
@@ -164,7 +194,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
         <Tabs
           value={activeTab}
@@ -195,20 +224,14 @@ export default function Home() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Kanban Tab */}
           <TabsContent value="kanban" className="mt-0 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground">
-                Kanban semanal
-              </h2>
-              <WeekFilter
-                value={kanbanWeekRange}
-                onChange={setKanbanWeekRange}
-                title="Semana"
-              />
+              <h2 className="text-sm font-semibold text-foreground">Kanban semanal</h2>
+              <WeekFilter value={kanbanWeekRange} onChange={setKanbanWeekRange} title="Semana" />
             </div>
             <KanbanBoard
               tasks={kanbanTasks}
+              projects={projects}
               onTasksChange={handleTasksChange}
               onDelete={handleDeleteTask}
               onUpsertTask={handleSaveTask}
@@ -217,17 +240,20 @@ export default function Home() {
             />
           </TabsContent>
 
-          {/* Calendar Tab */}
           <TabsContent value="calendario" className="mt-0">
-            <CalendarView tasks={tasks} onEditTask={handleCalendarEdit} />
+            <CalendarView tasks={tasks} projects={projects} onEditTask={handleCalendarEdit} />
           </TabsContent>
 
-          {/* Dashboard Tab */}
           <TabsContent value="dashboard" className="mt-0">
-            <MetricsDashboard tasks={tasks} />
+            <MetricsDashboard tasks={tasks} projects={projects} />
           </TabsContent>
         </Tabs>
       </main>
+      <ProjectManagerDialog
+        open={projectsOpen}
+        onClose={() => setProjectsOpen(false)}
+        projects={projects}
+      />
     </div>
   )
 }

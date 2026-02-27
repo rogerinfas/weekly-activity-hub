@@ -17,7 +17,7 @@ import {
   subWeeks,
 } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Task, PROJECT_DOT_COLORS, PROJECT_COLORS, PROJECT_LABELS, COLUMNS } from '@/lib/types'
+import { Task, ApiProject, getProjectBadge, getProjectDot, getProjectLabel, COLUMNS } from '@/lib/types'
 import { parseTaskDate } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,10 +28,11 @@ type CalendarMode = 'month' | 'week'
 
 interface CalendarViewProps {
   tasks: Task[]
+  projects: ApiProject[]
   onEditTask: (task: Task) => void
 }
 
-export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
+export function CalendarView({ tasks, projects, onEditTask }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDay, setSelectedDay] = useState<Date | null>(null)
   const [mode, setMode] = useState<CalendarMode>('month')
@@ -152,6 +153,7 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
             onSelectDay={day => setSelectedDay(prev => (prev && isSameDay(prev, day) ? null : day))}
             getTasksForDay={getTasksForDay}
             onEditTask={onEditTask}
+            projects={projects}
             WEEKDAYS={WEEKDAYS}
           />
         ) : (
@@ -161,6 +163,7 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
             onSelectDay={day => setSelectedDay(prev => (prev && isSameDay(prev, day) ? null : day))}
             getTasksForDay={getTasksForDay}
             onEditTask={onEditTask}
+            projects={projects}
             WEEKDAYS={WEEKDAYS}
           />
         )}
@@ -179,7 +182,7 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
             ) : (
               <div className="flex flex-col gap-2">
                 {selectedDayTasks.map(task => (
-                  <TaskSideItem key={task.id} task={task} onEdit={onEditTask} />
+                  <TaskSideItem key={task.id} task={task} projects={projects} onEdit={onEditTask} />
                 ))}
               </div>
             )}
@@ -201,10 +204,11 @@ interface MonthGridProps {
   onSelectDay: (day: Date) => void
   getTasksForDay: (day: Date) => Task[]
   onEditTask: (task: Task) => void
+  projects: ApiProject[]
   WEEKDAYS: string[]
 }
 
-function MonthGrid({ days, currentDate, selectedDay, onSelectDay, getTasksForDay, onEditTask, WEEKDAYS }: MonthGridProps) {
+function MonthGrid({ days, currentDate, selectedDay, onSelectDay, getTasksForDay, onEditTask, projects, WEEKDAYS }: MonthGridProps) {
   return (
     <>
       <div className="grid grid-cols-7 border-b border-border/60">
@@ -248,7 +252,7 @@ function MonthGrid({ days, currentDate, selectedDay, onSelectDay, getTasksForDay
 
               <div className="mt-1 flex flex-col gap-0.5">
                 {dayTasks.slice(0, 3).map(task => (
-                  <TaskChip key={task.id} task={task} onEdit={onEditTask} compact />
+                  <TaskChip key={task.id} task={task} projects={projects} onEdit={onEditTask} compact />
                 ))}
                 {dayTasks.length > 3 && (
                   <span className="text-[9px] text-muted-foreground px-1">
@@ -272,10 +276,11 @@ interface WeekGridProps {
   onSelectDay: (day: Date) => void
   getTasksForDay: (day: Date) => Task[]
   onEditTask: (task: Task) => void
+  projects: ApiProject[]
   WEEKDAYS: string[]
 }
 
-function WeekGrid({ days, selectedDay, onSelectDay, getTasksForDay, onEditTask, WEEKDAYS }: WeekGridProps) {
+function WeekGrid({ days, selectedDay, onSelectDay, getTasksForDay, onEditTask, projects, WEEKDAYS }: WeekGridProps) {
   return (
     <>
       {/* Headers */}
@@ -327,7 +332,7 @@ function WeekGrid({ days, selectedDay, onSelectDay, getTasksForDay, onEditTask, 
                 <span className="text-[10px] text-muted-foreground/40 text-center mt-4">—</span>
               )}
               {dayTasks.map(task => (
-                <TaskChip key={task.id} task={task} onEdit={onEditTask} />
+                <TaskChip key={task.id} task={task} projects={projects} onEdit={onEditTask} />
               ))}
             </div>
           )
@@ -341,10 +346,12 @@ function WeekGrid({ days, selectedDay, onSelectDay, getTasksForDay, onEditTask, 
 
 function TaskChip({
   task,
+  projects,
   onEdit,
   compact = false,
 }: {
   task: Task
+  projects: ApiProject[]
   onEdit: (t: Task) => void
   compact?: boolean
 }) {
@@ -365,7 +372,7 @@ function TaskChip({
         'bg-muted/60 hover:bg-muted',
       )}
     >
-      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', PROJECT_DOT_COLORS[task.project])} />
+      <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', getProjectDot(projects, task.project))} />
       <span className={cn(
         'text-foreground/80 truncate leading-tight flex-1',
         compact ? 'text-[10px]' : 'text-[11px]',
@@ -379,7 +386,7 @@ function TaskChip({
 
 // ---- Side panel task item ----
 
-function TaskSideItem({ task, onEdit }: { task: Task; onEdit: (t: Task) => void }) {
+function TaskSideItem({ task, projects, onEdit }: { task: Task; projects: ApiProject[]; onEdit: (t: Task) => void }) {
   const statusLabel = COLUMNS.find(c => c.id === task.status)?.title ?? task.status
   // Show a hint when the position comes from createdAt rather than an explicit date
   const isCreatedAtBased = !task.date && !!task.createdAt
@@ -392,7 +399,7 @@ function TaskSideItem({ task, onEdit }: { task: Task; onEdit: (t: Task) => void 
         'bg-muted/40 hover:bg-muted/70 transition-colors group border border-transparent hover:border-border/60',
       )}
     >
-      <span className={cn('w-2 h-2 rounded-full mt-1 shrink-0', PROJECT_DOT_COLORS[task.project])} />
+      <span className={cn('w-2 h-2 rounded-full mt-1 shrink-0', getProjectDot(projects, task.project))} />
       <div className="flex-1 min-w-0">
         <p className={cn(
           'text-xs font-medium text-foreground truncate',
@@ -403,9 +410,9 @@ function TaskSideItem({ task, onEdit }: { task: Task; onEdit: (t: Task) => void 
         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
           <Badge
             variant="outline"
-            className={cn('text-[9px] font-medium px-1 py-0 h-4 capitalize border-0', PROJECT_COLORS[task.project])}
+            className={cn('text-[9px] font-medium px-1 py-0 h-4 capitalize border-0', getProjectBadge(projects, task.project))}
           >
-            {PROJECT_LABELS[task.project]}
+            {getProjectLabel(projects, task.project)}
           </Badge>
           <span className="text-[9px] text-muted-foreground">{statusLabel}</span>
           {isCreatedAtBased && (

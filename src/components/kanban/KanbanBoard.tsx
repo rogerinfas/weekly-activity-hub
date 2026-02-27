@@ -21,7 +21,7 @@ import {
 } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Task, COLUMNS, Status, Column, Project } from '@/lib/types'
+import { Task, COLUMNS, Status, Column, ApiProject } from '@/lib/types'
 import { KanbanCard, KanbanCardUI } from './KanbanCard'
 import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button'
 
 interface KanbanBoardProps {
   tasks: Task[]
+  projects: ApiProject[]
   onTasksChange: (tasks: Task[]) => void
   onDelete: (id: string) => void
   onUpsertTask: (task: Task) => void
@@ -57,6 +58,7 @@ function applyColumnMap(source: Task[], columnMap: ColumnMap): Task[] {
 
 export function KanbanBoard({
   tasks,
+  projects,
   onTasksChange,
   onDelete,
   onUpsertTask,
@@ -139,10 +141,11 @@ export function KanbanBoard({
   )
 
   function handleAddTask(status: Status) {
+    const defaultProject = projects.length > 0 ? projects[0].name : 'otro'
     const newTask: Task = {
       id: crypto.randomUUID(),
       title: '',
-      project: 'desarrollo' as Project,
+      project: defaultProject,
       status,
     }
     onUpsertTask(newTask)
@@ -262,6 +265,7 @@ export function KanbanBoard({
             column={column}
             taskIds={columnMap[column.id]}
             allTasks={tasks}
+            projects={projects}
             onDelete={onDelete}
             onAddTask={handleAddTask}
             editingTaskId={editingTaskId}
@@ -275,6 +279,7 @@ export function KanbanBoard({
         {activeTask && (
           <KanbanCardUI
             task={activeTask}
+            projects={projects}
             isOverlay
           />
         )}
@@ -289,6 +294,7 @@ interface DroppableColumnProps {
   column: Column
   taskIds: UniqueIdentifier[]
   allTasks: Task[]
+  projects: ApiProject[]
   onDelete: (id: string) => void
   onAddTask: (status: Status) => void
   editingTaskId: string | null
@@ -300,6 +306,7 @@ function DroppableColumn({
   column,
   taskIds,
   allTasks,
+  projects,
   onDelete,
   onAddTask,
   editingTaskId,
@@ -349,6 +356,7 @@ function DroppableColumn({
               <KanbanCard
                 key={task.id}
                 task={task}
+                projects={projects}
                 isEditing={isEditing}
                 onEdit={taskToEdit => onEditingChange(taskToEdit.id)}
                 onDelete={onDelete}
