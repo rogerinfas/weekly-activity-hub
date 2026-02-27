@@ -66,50 +66,23 @@ export default function Home() {
   const total = tasks.length
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
 
-  // Auto-manages completedAt: sets today when moved to 'completado', clears otherwise
-  function applyCompletedAt(task: Task, prevTask?: Task): Task {
-    const today = new Date().toISOString()
-    const isCompletedNow = task.status === 'completado';
-    const wasCompletedBefore = prevTask?.status === 'completado';
-
-    if (isCompletedNow && !wasCompletedBefore) {
-      return { ...task, completedAt: today }
-    }
-
-    if (!isCompletedNow && task.completedAt) {
-      // API will set it to null or undefined
-      return { ...task, completedAt: undefined as any }
-    }
-
-    return task
-  }
-
   function handleSaveTask(task: Task) {
     const exists = tasks.find(t => t.id === task.id)
-    const today = new Date().toISOString()
-
-    const withCreatedAt: Task = exists
-      ? task
-      : { ...task, createdAt: task.createdAt ?? today }
-
-    const processed = applyCompletedAt(withCreatedAt, exists)
 
     if (exists) {
-      updateTaskMutation.mutate({ id: processed.id, payload: processed })
+      updateTaskMutation.mutate({ id: task.id, payload: task })
     } else {
-      createTaskMutation.mutate(processed as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
+      createTaskMutation.mutate(task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
     }
   }
 
   function handleTasksChange(updatedTasks: Task[]) {
-    // Only handles mass drag-n-drop or reorders
     const prevById = Object.fromEntries(tasks.map(t => [t.id, t]))
 
     updatedTasks.forEach((t) => {
       const prev = prevById[t.id]
       if (!prev || JSON.stringify(prev) !== JSON.stringify(t)) {
-        const processed = applyCompletedAt(t, prev)
-        updateTaskMutation.mutate({ id: processed.id!, payload: processed })
+        updateTaskMutation.mutate({ id: t.id!, payload: t })
       }
     })
   }
