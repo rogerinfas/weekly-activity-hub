@@ -26,16 +26,7 @@ import { KanbanCard, KanbanCardUI } from './KanbanCard'
 import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+
 
 interface KanbanBoardProps {
   tasks: Task[]
@@ -283,8 +274,6 @@ export function KanbanBoard({
         {activeTask && (
           <KanbanCardUI
             task={activeTask}
-            onEdit={() => { }}
-            onDelete={() => { }}
             isOverlay
           />
         )}
@@ -355,32 +344,21 @@ function DroppableColumn({
             const isEditing = editingTaskId === task.id
             const isNew = !task.title?.trim()
 
-            if (isEditing) {
-              return (
-                <InlineTaskEditor
-                  key={task.id}
-                  task={task}
-                  isNew={isNew}
-                  onSave={updated => {
-                    onUpsertTask(updated)
-                    onEditingChange(null)
-                  }}
-                  onCancel={() => {
-                    if (isNew) {
-                      onDelete(task.id)
-                    }
-                    onEditingChange(null)
-                  }}
-                />
-              )
-            }
-
             return (
               <KanbanCard
                 key={task.id}
                 task={task}
+                isEditing={isEditing}
                 onEdit={taskToEdit => onEditingChange(taskToEdit.id)}
                 onDelete={onDelete}
+                onSave={updated => {
+                  onUpsertTask(updated)
+                  onEditingChange(null)
+                }}
+                onCancel={() => {
+                  if (isNew) onDelete(task.id)
+                  onEditingChange(null)
+                }}
               />
             )
           })}
@@ -396,95 +374,4 @@ function DroppableColumn({
   )
 }
 
-// ----- InlineTaskEditor (internal) -----
 
-interface InlineTaskEditorProps {
-  task: Task
-  isNew: boolean
-  onSave: (task: Task) => void
-  onCancel: () => void
-}
-
-function InlineTaskEditor({ task, isNew, onSave, onCancel }: InlineTaskEditorProps) {
-  const [title, setTitle] = useState(task.title)
-  const [description, setDescription] = useState(task.description ?? '')
-  const [project, setProject] = useState<Project>(task.project)
-
-  const canSave = title.trim().length > 0
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!canSave) return
-
-    const updated: Task = {
-      ...task,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      project,
-    }
-    onSave(updated)
-  }
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className={cn(
-        'bg-card rounded-xl border border-border/60 p-3.5 shadow-sm space-y-2.5',
-        'ring-1 ring-primary/20'
-      )}
-    >
-      <div className="space-y-1">
-        <Label htmlFor={`title-${task.id}`} className="text-[11px]">
-          Título {isNew && <span className="text-destructive">*</span>}
-        </Label>
-        <Input
-          id={`title-${task.id}`}
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="¿Qué necesitas hacer?"
-          className="h-8 text-xs"
-          autoFocus
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label htmlFor={`desc-${task.id}`} className="text-[11px] text-muted-foreground">
-          Descripción <span className="text-muted-foreground/60">(opcional)</span>
-        </Label>
-        <Textarea
-          id={`desc-${task.id}`}
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          placeholder="Añade detalles si quieres..."
-          className="min-h-[56px] text-xs resize-none"
-          rows={2}
-        />
-      </div>
-
-      <div className="space-y-1">
-        <Label className="text-[11px]">Proyecto</Label>
-        <Select value={project} onValueChange={v => setProject(v as Project)}>
-          <SelectTrigger className="h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="desarrollo">Desarrollo</SelectItem>
-            <SelectItem value="diseño">Diseño</SelectItem>
-            <SelectItem value="marketing">Marketing</SelectItem>
-            <SelectItem value="personal">Personal</SelectItem>
-            <SelectItem value="otro">Otro</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="flex justify-end gap-2 pt-1.5">
-        <Button type="button" size="xs" variant="outline" onClick={onCancel}>
-          Cancelar
-        </Button>
-        <Button type="submit" size="xs" disabled={!canSave}>
-          Guardar
-        </Button>
-      </div>
-    </form>
-  )
-}
