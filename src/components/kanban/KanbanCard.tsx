@@ -10,6 +10,7 @@ import {
   PROJECT_LABELS,
   PROJECT_DOT_COLORS,
 } from '@/lib/types'
+import { parseTaskDate } from '@/lib/date-utils'
 import { Badge } from '@/components/ui/badge'
 import { Pencil, Trash2, CheckCircle2, Check, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -261,7 +262,7 @@ function CardContent({ task, isEditing, onEdit, onDelete, onSave, onCancel }: Ca
         {/* createdAt chip — view mode only */}
         {!isEditing && task.createdAt && (
           <span className="text-[9px] text-muted-foreground/60 bg-muted/50 rounded px-1 py-0.5">
-            Creada {new Date(task.createdAt + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+            Creada {parseTaskDate(task.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
           </span>
         )}
         {isEditing ? (
@@ -300,14 +301,14 @@ function CardContent({ task, isEditing, onEdit, onDelete, onSave, onCancel }: Ca
       {task.completedAt && (
         <div className="mt-2 flex items-center gap-0.5 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 rounded-md px-1.5 py-0.5 w-fit">
           <CheckCircle2 className="h-2.5 w-2.5" />
-          {new Date(task.completedAt + 'T00:00:00').toLocaleDateString('es-ES', {
+          {parseTaskDate(task.completedAt).toLocaleDateString('es-ES', {
             day: 'numeric', month: 'short',
           })}
         </div>
       )}
       {task.date && !task.completedAt && (
         <div className="mt-2 text-[10px] text-muted-foreground bg-muted/60 rounded-md px-1.5 py-0.5 inline-block">
-          {new Date(task.date + 'T00:00:00').toLocaleDateString('es-ES', {
+          {parseTaskDate(task.date).toLocaleDateString('es-ES', {
             weekday: 'short', day: 'numeric', month: 'short',
           })}
         </div>
