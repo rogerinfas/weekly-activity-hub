@@ -34,7 +34,6 @@ const emptyForm = {
   description: '',
   project: 'desarrollo' as Project,
   status: 'backlog' as Status,
-  estimatedHours: '',
 }
 
 export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }: AddTaskModalProps) {
@@ -45,7 +44,6 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
         description: editTask.description ?? '',
         project: editTask.project,
         status: editTask.status,
-        estimatedHours: editTask.estimatedHours?.toString() ?? '',
       }
     }
     return { ...emptyForm, status: defaultStatus ?? 'backlog' }
@@ -62,7 +60,6 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
       project: form.project,
       status: form.status,
       ...(editTask?.completedAt ? { completedAt: editTask.completedAt } : {}),
-      estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : undefined,
     }
     onSave(task)
     onClose()
@@ -137,24 +134,6 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          {/* Estimated hours */}
-          <div className="space-y-1.5">
-            <Label htmlFor="hours" className="text-xs text-muted-foreground">
-              Horas estimadas <span className="text-muted-foreground/60">(opcional)</span>
-            </Label>
-            <Input
-              id="hours"
-              type="number"
-              min="0.25"
-              max="24"
-              step="0.25"
-              placeholder="ej. 1.5"
-              value={form.estimatedHours}
-              onChange={e => setForm(f => ({ ...f, estimatedHours: e.target.value }))}
-              className="h-9"
-            />
           </div>
 
           <DialogFooter className="pt-2">
