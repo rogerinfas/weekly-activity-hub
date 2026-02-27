@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Task } from '@/lib/types'
+import { Task, ApiProject } from '@/lib/types'
 import { KanbanBoard } from '@/components/kanban/KanbanBoard'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { MetricsDashboard } from '@/components/dashboard/MetricsDashboard'
@@ -15,7 +15,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '@/lib/api/tasks'
 import { projectsApi } from '@/lib/api/projects'
 import { type WeekRange, getWeekRange, parseTaskDate } from '@/lib/date-utils'
-import { ApiProject } from '@/lib/types'
 
 function filterByWeek(tasks: Task[], range: WeekRange | undefined): Task[] {
   if (!range) return tasks
@@ -42,7 +41,6 @@ export default function Home() {
     getWeekRange(new Date()),
   )
   const [projectsOpen, setProjectsOpen] = useState(false)
-  const [pendingTasks, setPendingTasks] = useState<Task[]>([])
 
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks'],
@@ -58,26 +56,28 @@ export default function Home() {
     mutationFn: tasksApi.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    }
+    },
   })
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<Task> }) => tasksApi.update(id, payload),
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<Task> }) =>
+      tasksApi.update(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    }
+    },
   })
 
   const deleteTaskMutation = useMutation({
     mutationFn: tasksApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    }
+    },
   })
 
   useEffect(() => {
     const saved = localStorage.getItem('wah-dark')
-    const prefersDark = saved !== null ? saved === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches
+    const prefersDark =
+      saved !== null ? saved === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches
     setIsDark(prefersDark)
     document.documentElement.classList.toggle('dark', prefersDark)
   }, [])
@@ -89,60 +89,55 @@ export default function Home() {
     localStorage.setItem('wah-dark', String(next))
   }
 
-  const filteredTasks = useMemo(
+  const kanbanTasks = useMemo(
     () => filterByWeek(tasks, kanbanWeekRange),
     [tasks, kanbanWeekRange],
   )
 
-  const kanbanTasks = useMemo(
-    () => {
-      const serverIds = new Set(filteredTasks.map(t => t.id))
-      const stillPending = pendingTasks.filter(t => !serverIds.has(t.id))
-      return [...filteredTasks, ...stillPending]
-    },
-    [filteredTasks, pendingTasks],
+  const completedCount = useMemo(
+    () => kanbanTasks.filter(t => t.status === 'completado').length,
+    [kanbanTasks],
   )
-
-  const completedCount = useMemo(() => kanbanTasks.filter(t => t.status === 'completado').length, [kanbanTasks])
   const total = kanbanTasks.length
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
 
+  function handleCreateTask(task: Task) {
+    queryClient.setQueryData<Task[]>(['tasks'], old => [...(old ?? []), task])
+  }
+
   function handleSaveTask(task: Task) {
     const existsInServer = tasks.find(t => t.id === task.id)
-    const existsInPending = pendingTasks.find(t => t.id === task.id)
 
     if (existsInServer) {
+      queryClient.setQueryData<Task[]>(['tasks'], old =>
+        (old ?? []).map(t => (t.id === task.id ? { ...t, ...task } : t)),
+      )
       updateTaskMutation.mutate({ id: task.id, payload: task })
-    } else if (existsInPending) {
-      if (task.title.trim()) {
-        setPendingTasks(prev => prev.filter(t => t.id !== task.id))
-        createTaskMutation.mutate(task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
-      }
-    } else {
-      if (!task.title.trim()) {
-        setPendingTasks(prev => [...prev, task])
-      } else {
-        createTaskMutation.mutate(task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
-      }
+    } else if (task.title.trim()) {
+      queryClient.setQueryData<Task[]>(['tasks'], old =>
+        (old ?? []).map(t => (t.id === task.id ? task : t)),
+      )
+      createTaskMutation.mutate(task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
     }
   }
 
   function handleTasksChange(updatedTasks: Task[]) {
     const prevById = Object.fromEntries(tasks.map(t => [t.id, t]))
 
-    updatedTasks.forEach((t) => {
+    updatedTasks.forEach(t => {
       const prev = prevById[t.id]
-      if (!prev || JSON.stringify(prev) !== JSON.stringify(t)) {
+      if (prev && JSON.stringify(prev) !== JSON.stringify(t)) {
         updateTaskMutation.mutate({ id: t.id!, payload: t })
       }
     })
   }
 
   function handleDeleteTask(id: string) {
-    const isPending = pendingTasks.find(t => t.id === id)
-    if (isPending) {
-      setPendingTasks(prev => prev.filter(t => t.id !== id))
-    } else {
+    const existsInServer = tasks.find(t => t.id === id)
+    queryClient.setQueryData<Task[]>(['tasks'], old =>
+      (old ?? []).filter(t => t.id !== id),
+    )
+    if (existsInServer) {
       deleteTaskMutation.mutate(id)
     }
   }
@@ -160,7 +155,9 @@ export default function Home() {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
               <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
-            <span className="text-sm font-semibold text-foreground hidden sm:block">Weekly Activity Hub</span>
+            <span className="text-sm font-semibold text-foreground hidden sm:block">
+              Weekly Activity Hub
+            </span>
           </div>
 
           <div className="flex items-center gap-2 bg-muted/60 rounded-full px-3 py-1">
@@ -173,7 +170,10 @@ export default function Home() {
             <span className="text-xs text-muted-foreground tabular-nums">
               {completedCount}/{total}
             </span>
-            <Badge variant="outline" className="text-[10px] py-0 h-4 px-1.5 border-primary/30 text-primary">
+            <Badge
+              variant="outline"
+              className="text-[10px] py-0 h-4 px-1.5 border-primary/30 text-primary"
+            >
               {progressPct}%
             </Badge>
           </div>
@@ -204,7 +204,9 @@ export default function Home() {
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
         <Tabs
           value={activeTab}
-          onValueChange={value => setActiveTab(value as 'kanban' | 'calendario' | 'dashboard')}
+          onValueChange={value =>
+            setActiveTab(value as 'kanban' | 'calendario' | 'dashboard')
+          }
           className="space-y-6"
         >
           <TabsList className="bg-muted/50 border border-border/60 rounded-xl p-1 h-auto gap-1">
@@ -234,13 +236,18 @@ export default function Home() {
           <TabsContent value="kanban" className="mt-0 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground">Kanban semanal</h2>
-              <WeekFilter value={kanbanWeekRange} onChange={setKanbanWeekRange} title="Semana" />
+              <WeekFilter
+                value={kanbanWeekRange}
+                onChange={setKanbanWeekRange}
+                title="Semana"
+              />
             </div>
             <KanbanBoard
               tasks={kanbanTasks}
               projects={projects}
               onTasksChange={handleTasksChange}
               onDelete={handleDeleteTask}
+              onCreateTask={handleCreateTask}
               onUpsertTask={handleSaveTask}
               editingTaskId={editingTaskId}
               onEditingChange={setEditingTaskId}
