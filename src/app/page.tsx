@@ -42,6 +42,7 @@ export default function Home() {
     getWeekRange(new Date()),
   )
   const [projectsOpen, setProjectsOpen] = useState(false)
+  const [pendingTasks, setPendingTasks] = useState<Task[]>([])
 
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks'],
@@ -88,9 +89,18 @@ export default function Home() {
     localStorage.setItem('wah-dark', String(next))
   }
 
-  const kanbanTasks = useMemo(
+  const filteredTasks = useMemo(
     () => filterByWeek(tasks, kanbanWeekRange),
     [tasks, kanbanWeekRange],
+  )
+
+  const kanbanTasks = useMemo(
+    () => {
+      const serverIds = new Set(filteredTasks.map(t => t.id))
+      const stillPending = pendingTasks.filter(t => !serverIds.has(t.id))
+      return [...filteredTasks, ...stillPending]
+    },
+    [filteredTasks, pendingTasks],
   )
 
   const completedCount = useMemo(() => kanbanTasks.filter(t => t.status === 'completado').length, [kanbanTasks])
@@ -98,12 +108,22 @@ export default function Home() {
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
 
   function handleSaveTask(task: Task) {
-    const exists = tasks.find(t => t.id === task.id)
+    const existsInServer = tasks.find(t => t.id === task.id)
+    const existsInPending = pendingTasks.find(t => t.id === task.id)
 
-    if (exists) {
+    if (existsInServer) {
       updateTaskMutation.mutate({ id: task.id, payload: task })
+    } else if (existsInPending) {
+      if (task.title.trim()) {
+        setPendingTasks(prev => prev.filter(t => t.id !== task.id))
+        createTaskMutation.mutate(task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
+      }
     } else {
-      createTaskMutation.mutate(task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
+      if (!task.title.trim()) {
+        setPendingTasks(prev => [...prev, task])
+      } else {
+        createTaskMutation.mutate(task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
+      }
     }
   }
 
@@ -119,7 +139,12 @@ export default function Home() {
   }
 
   function handleDeleteTask(id: string) {
-    deleteTaskMutation.mutate(id)
+    const isPending = pendingTasks.find(t => t.id === id)
+    if (isPending) {
+      setPendingTasks(prev => prev.filter(t => t.id !== id))
+    } else {
+      deleteTaskMutation.mutate(id)
+    }
   }
 
   function handleCalendarEdit(task: Task) {
