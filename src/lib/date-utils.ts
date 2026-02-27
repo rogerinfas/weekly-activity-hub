@@ -8,6 +8,21 @@ import {
 } from 'date-fns'
 import { es } from 'date-fns/locale'
 
+/**
+ * Safely parses a date string coming from the API.
+ *
+ * - Full ISO datetime strings (e.g. "2026-02-27T15:30:00.000Z") are parsed
+ *   directly with `new Date()`.
+ * - Plain date strings (e.g. "2026-02-27") are treated as local midnight by
+ *   appending "T00:00:00", avoiding the UTC-offset day-shift bug.
+ *
+ * Using `value + 'T00:00:00'` on an already-full ISO string produces an
+ * invalid format ("...000ZT00:00:00") and results in Invalid Date.
+ */
+export function parseTaskDate(value: string): Date {
+  return new Date(value.includes('T') ? value : value + 'T00:00:00')
+}
+
 export interface WeekRange {
   startDate: Date
   endDate: Date

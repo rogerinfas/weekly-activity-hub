@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/chart'
 import { subDays, format, isSameDay } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { parseTaskDate } from '@/lib/date-utils'
 
 interface MonthlyHistoryChartProps {
   tasks: Task[]
@@ -53,7 +54,7 @@ export function MonthlyHistoryChart({ tasks }: MonthlyHistoryChartProps) {
       // Use effective date: explicit date or createdAt as fallback
       const dayTasks = tasks.filter(t => {
         const effectiveDate = t.date ?? t.createdAt
-        return effectiveDate && isSameDay(new Date(effectiveDate + 'T00:00:00'), day)
+        return effectiveDate && isSameDay(parseTaskDate(effectiveDate), day)
       })
       const completedCount = dayTasks.filter(t => t.status === 'completado').length
       const totalCount = dayTasks.length

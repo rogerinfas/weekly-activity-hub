@@ -18,6 +18,7 @@ import {
 } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Task, PROJECT_DOT_COLORS, PROJECT_COLORS, PROJECT_LABELS, COLUMNS } from '@/lib/types'
+import { parseTaskDate } from '@/lib/date-utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, ChevronRight, CalendarDays, LayoutGrid, CheckCircle2, Circle, Clock } from 'lucide-react'
@@ -43,7 +44,7 @@ export function CalendarView({ tasks, onEditTask }: CalendarViewProps) {
   const getTasksForDay = (day: Date) =>
     tasksWithDate.filter(t => {
       const d = getEffectiveDate(t)
-      return d ? isSameDay(new Date(d + 'T00:00:00'), day) : false
+      return d ? isSameDay(parseTaskDate(d), day) : false
     })
 
   // ---- Navigation label ----
