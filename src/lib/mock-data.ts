@@ -15,7 +15,6 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Hay 4 pull requests esperando revisión en el repositorio principal.',
     project: 'desarrollo',
     status: 'backlog',
-    estimatedHours: 2,
   },
   {
     id: '2',
@@ -23,7 +22,6 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Nuevo hero section y sección de precios.',
     project: 'diseño',
     status: 'backlog',
-    estimatedHours: 4,
   },
   {
     id: '3',
@@ -31,7 +29,6 @@ export const INITIAL_TASKS: Task[] = [
     project: 'marketing',
     status: 'backlog',
     date: fmt(3),
-    estimatedHours: 1.5,
   },
   {
     id: '4',
@@ -39,7 +36,6 @@ export const INITIAL_TASKS: Task[] = [
     description: 'App Router, Server Actions, Partial Prerendering.',
     project: 'desarrollo',
     status: 'backlog',
-    estimatedHours: 2,
   },
   {
     id: '5',
@@ -47,7 +43,6 @@ export const INITIAL_TASKS: Task[] = [
     project: 'personal',
     status: 'backlog',
     date: fmt(1),
-    estimatedHours: 0.5,
   },
 
   // En Progreso
@@ -58,7 +53,6 @@ export const INITIAL_TASKS: Task[] = [
     project: 'desarrollo',
     status: 'en-progreso',
     date: fmt(0),
-    estimatedHours: 6,
   },
   {
     id: '7',
@@ -66,7 +60,6 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Paleta de colores dark/light para el design system.',
     project: 'diseño',
     status: 'en-progreso',
-    estimatedHours: 3,
   },
   {
     id: '8',
@@ -74,14 +67,12 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Secuencia de 4 emails onboarding.',
     project: 'marketing',
     status: 'en-progreso',
-    estimatedHours: 2,
   },
   {
     id: '9',
     title: 'Actualizar CV y LinkedIn',
     project: 'personal',
     status: 'en-progreso',
-    estimatedHours: 1.5,
   },
 
   // Completado
@@ -92,7 +83,6 @@ export const INITIAL_TASKS: Task[] = [
     project: 'desarrollo',
     status: 'completado',
     completedAt: fmt(-2),
-    estimatedHours: 3,
   },
   {
     id: '11',
@@ -100,7 +90,6 @@ export const INITIAL_TASKS: Task[] = [
     project: 'diseño',
     status: 'completado',
     completedAt: fmt(-3),
-    estimatedHours: 2,
   },
   {
     id: '12',
@@ -109,7 +98,6 @@ export const INITIAL_TASKS: Task[] = [
     project: 'marketing',
     status: 'completado',
     completedAt: fmt(-4),
-    estimatedHours: 1,
   },
   {
     id: '13',
@@ -118,7 +106,6 @@ export const INITIAL_TASKS: Task[] = [
     project: 'desarrollo',
     status: 'completado',
     completedAt: fmt(-2),
-    estimatedHours: 2.5,
   },
   {
     id: '14',
@@ -126,7 +113,6 @@ export const INITIAL_TASKS: Task[] = [
     project: 'marketing',
     status: 'completado',
     completedAt: fmt(-5),
-    estimatedHours: 1,
   },
   {
     id: '15',
@@ -135,6 +121,5 @@ export const INITIAL_TASKS: Task[] = [
     project: 'personal',
     status: 'completado',
     completedAt: fmt(-6),
-    estimatedHours: 1,
   },
 ]
