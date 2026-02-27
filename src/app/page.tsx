@@ -9,7 +9,8 @@ import { WeekFilter } from '@/components/dashboard/WeekFilter'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun } from 'lucide-react'
+import { ProjectManagerDialog } from '@/components/projects/ProjectManagerDialog'
+import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun, Settings2 } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '@/lib/api/tasks'
 import { projectsApi } from '@/lib/api/projects'
@@ -40,6 +41,7 @@ export default function Home() {
   const [kanbanWeekRange, setKanbanWeekRange] = useState<WeekRange | undefined>(() =>
     getWeekRange(new Date()),
   )
+  const [projectsOpen, setProjectsOpen] = useState(false)
 
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks'],
@@ -151,7 +153,16 @@ export default function Home() {
             </Badge>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+              onClick={() => setProjectsOpen(true)}
+              aria-label="Gestionar proyectos"
+            >
+              <Settings2 className="h-4 w-4" />
+            </Button>
             <Button
               size="icon"
               variant="ghost"
@@ -220,6 +231,11 @@ export default function Home() {
           </TabsContent>
         </Tabs>
       </main>
+      <ProjectManagerDialog
+        open={projectsOpen}
+        onClose={() => setProjectsOpen(false)}
+        projects={projects}
+      />
     </div>
   )
 }
