@@ -1,6 +1,5 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -43,8 +42,6 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
 }
 
 /* ============================================================
@@ -57,9 +54,9 @@
   --background: oklch(0.985 0.005 85);
   --foreground: oklch(0.18 0.025 60);
 
+  /* Cards & popovers */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0.025 60);
-
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.025 60);
 
@@ -67,28 +64,39 @@
   --primary: oklch(0.72 0.165 68);
   --primary-foreground: oklch(0.12 0.02 60);
 
+  /* Secondary */
   --secondary: oklch(0.955 0.012 80);
   --secondary-foreground: oklch(0.3 0.03 65);
 
+  /* Muted */
   --muted: oklch(0.955 0.012 80);
   --muted-foreground: oklch(0.52 0.022 75);
 
+  /* Accent */
   --accent: oklch(0.94 0.055 75);
   --accent-foreground: oklch(0.45 0.14 65);
 
+  /* Destructive */
   --destructive: oklch(0.577 0.245 27.325);
 
+  /* Borders & inputs */
   --border: oklch(0.9 0.012 80);
   --input: oklch(0.9 0.012 80);
   --ring: oklch(0.72 0.165 68);
 
-  /* Chart colors — warm analogues */
-  --chart-1: oklch(0.72 0.165 68);   /* amber */
-  --chart-2: oklch(0.65 0.14 48);    /* orange */
-  --chart-3: oklch(0.78 0.13 90);    /* yellow-green */
-  --chart-4: oklch(0.62 0.17 35);    /* deep orange */
-  --chart-5: oklch(0.68 0.12 105);   /* olive */
+  /* Chart colors — project palette (desarrollo, diseño, marketing, personal, otro) */
+  --chart-1: #3b82f6;
+  /* blue   – desarrollo */
+  --chart-2: #8b5cf6;
+  /* violet – diseño     */
+  --chart-3: #ec4899;
+  /* pink   – marketing   */
+  --chart-4: #f59e0b;
+  /* amber  – personal    */
+  --chart-5: #64748b;
+  /* slate  – otro        */
 
+  /* Sidebar */
   --sidebar: oklch(0.97 0.008 80);
   --sidebar-foreground: oklch(0.18 0.025 60);
   --sidebar-primary: oklch(0.72 0.165 68);
@@ -127,15 +135,21 @@
 
   --destructive: oklch(0.704 0.191 22.216);
 
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 13%);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.78 0.17 70);
 
-  --chart-1: oklch(0.78 0.17 70);    /* amber */
-  --chart-2: oklch(0.68 0.14 48);    /* orange */
-  --chart-3: oklch(0.8 0.13 92);     /* yellow-green */
-  --chart-4: oklch(0.65 0.17 35);    /* deep orange */
-  --chart-5: oklch(0.72 0.12 108);   /* olive */
+  /* Chart colors dark — slightly lighter for contrast */
+  --chart-1: #60a5fa;
+  /* blue-400   – desarrollo */
+  --chart-2: #a78bfa;
+  /* violet-400 – diseño     */
+  --chart-3: #f472b6;
+  /* pink-400   – marketing  */
+  --chart-4: #fbbf24;
+  /* amber-400  – personal   */
+  --chart-5: #94a3b8;
+  /* slate-400  – otro       */
 
   --sidebar: oklch(0.17 0.015 60);
   --sidebar-foreground: oklch(0.96 0.006 80);
@@ -143,32 +157,61 @@
   --sidebar-primary-foreground: oklch(0.12 0.02 60);
   --sidebar-accent: oklch(0.28 0.055 68);
   --sidebar-accent-foreground: oklch(0.82 0.16 72);
-  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.78 0.17 70);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
+
+  html {
+    @apply overflow-x-hidden;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground min-h-svh w-full;
+  }
+
+  /* Override Radix scroll locking for sticky headers */
+  body[data-scroll-locked] {
+    overflow: unset !important;
+  }
+
+  /* Cursor pointer for interactive elements */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* Prevent focus zoom on mobile */
+  @media screen and (max-width: 767px) {
+
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
   }
 }
 
-@layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: oklch(0.82 0.04 75) transparent;
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
   }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: oklch(0.82 0.04 75);
-    border-radius: 99px;
-  }
+
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility faded-bottom {
+  @apply after:pointer-events-none after:absolute after:start-0 after:bottom-0 after:hidden after:h-32 after:w-full after:rounded-b-2xl after:bg-[linear-gradient(180deg, _transparent_10%, _var(--background)_70%)] md:after:block;
 }
