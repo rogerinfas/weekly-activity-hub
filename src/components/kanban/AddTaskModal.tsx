@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Task, Project, Status } from '@/lib/types'
+import { Task, Status, ApiProject } from '@/lib/types'
 import {
   Dialog,
   DialogContent,
@@ -25,18 +25,14 @@ interface AddTaskModalProps {
   open: boolean
   onClose: () => void
   onSave: (task: Task) => void
+  projects: ApiProject[]
   editTask?: Task | null
   defaultStatus?: Status
 }
 
-const emptyForm = {
-  title: '',
-  description: '',
-  project: 'desarrollo' as Project,
-  status: 'backlog' as Status,
-}
+export function AddTaskModal({ open, onClose, onSave, projects, editTask, defaultStatus }: AddTaskModalProps) {
+  const defaultProject = projects.length > 0 ? projects[0].name : 'otro'
 
-export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }: AddTaskModalProps) {
   const [form, setForm] = useState(() => {
     if (editTask) {
       return {
@@ -46,7 +42,7 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
         status: editTask.status,
       }
     }
-    return { ...emptyForm, status: defaultStatus ?? 'backlog' }
+    return { title: '', description: '', project: defaultProject, status: (defaultStatus ?? 'backlog') as Status }
   })
 
   function handleSubmit(e: React.FormEvent) {
@@ -107,16 +103,14 @@ export function AddTaskModal({ open, onClose, onSave, editTask, defaultStatus }:
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs">Proyecto</Label>
-              <Select value={form.project} onValueChange={v => setForm(f => ({ ...f, project: v as Project }))}>
+              <Select value={form.project} onValueChange={v => setForm(f => ({ ...f, project: v }))}>
                 <SelectTrigger className="h-9">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="desarrollo">Desarrollo</SelectItem>
-                  <SelectItem value="diseño">Diseño</SelectItem>
-                  <SelectItem value="marketing">Marketing</SelectItem>
-                  <SelectItem value="personal">Personal</SelectItem>
-                  <SelectItem value="otro">Otro</SelectItem>
+                  {projects.map(p => (
+                    <SelectItem key={p.name} value={p.name}>{p.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -27,18 +27,17 @@ import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-
 interface KanbanBoardProps {
   tasks: Task[]
   projects: ApiProject[]
   onTasksChange: (tasks: Task[]) => void
   onDelete: (id: string) => void
+  onCreateTask: (task: Task) => void
   onUpsertTask: (task: Task) => void
   editingTaskId: string | null
   onEditingChange: (id: string | null) => void
 }
 
-// Internal data structure: column id → ordered task ids
 type ColumnMap = Record<Status, UniqueIdentifier[]>
 
 function tasksToColumnMap(tasks: Task[]): ColumnMap {
@@ -52,7 +51,7 @@ function applyColumnMap(source: Task[], columnMap: ColumnMap): Task[] {
   const byId = Object.fromEntries(source.map(t => [t.id, t]))
   return (Object.entries(columnMap) as [Status, UniqueIdentifier[]][]).flatMap(
     ([status, ids]) =>
-      ids.map((id, index) => ({ ...byId[id as string], status, order: index }))
+      ids.map((id, index) => ({ ...byId[id as string], status, order: index })),
   )
 }
 
@@ -61,6 +60,7 @@ export function KanbanBoard({
   projects,
   onTasksChange,
   onDelete,
+  onCreateTask,
   onUpsertTask,
   editingTaskId,
   onEditingChange,
@@ -69,23 +69,18 @@ export function KanbanBoard({
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const lastOverId = useRef<UniqueIdentifier | null>(null)
   const recentlyMovedToNewContainer = useRef(false)
-  // Snapshot taken at drag start for cancel rollback
   const clonedColumnMap = useRef<ColumnMap | null>(null)
-  // Keep a stable reference to tasks without causing re-renders
   const tasksRef = useRef(tasks)
   useEffect(() => {
     tasksRef.current = tasks
   })
 
-  // Sync column map when tasks change from outside (add/edit/delete) but NOT during drag
   useEffect(() => {
     if (activeId === null) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setColumnMap(tasksToColumnMap(tasks))
     }
   }, [tasks, activeId])
 
-  // Per the official dnd-kit example: reset recentlyMovedToNewContainer after each render
   useEffect(() => {
     requestAnimationFrame(() => {
       recentlyMovedToNewContainer.current = false
@@ -93,39 +88,39 @@ export function KanbanBoard({
   }, [columnMap])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   )
 
-  const findContainer = useCallback((id: UniqueIdentifier): Status | undefined => {
-    // id is one of the column ids
-    if (id in columnMap) return id as Status
-    // id is a task id
-    return (Object.keys(columnMap) as Status[]).find(key =>
-      columnMap[key].includes(id)
-    )
-  }, [columnMap])
+  const findContainer = useCallback(
+    (id: UniqueIdentifier): Status | undefined => {
+      if (id in columnMap) return id as Status
+      return (Object.keys(columnMap) as Status[]).find(key =>
+        columnMap[key].includes(id),
+      )
+    },
+    [columnMap],
+  )
 
-  // Custom collision detection from the official dnd-kit MultipleContainers example
   const collisionDetectionStrategy: CollisionDetection = useCallback(
-    (args) => {
-      // Pointer-within first (most precise)
+    args => {
       const pointerIntersections = pointerWithin(args)
-      const intersections = pointerIntersections.length > 0
-        ? pointerIntersections
-        : rectIntersection(args)
+      const intersections =
+        pointerIntersections.length > 0
+          ? pointerIntersections
+          : rectIntersection(args)
       let overId = getFirstCollision(intersections, 'id')
 
       if (overId != null) {
         if (overId in columnMap) {
           const colItems = columnMap[overId as Status]
           if (colItems.length > 0) {
-            // Return the closest item inside the container
-            overId = closestCenter({
-              ...args,
-              droppableContainers: args.droppableContainers.filter(c =>
-                c.id !== overId && colItems.includes(c.id)
-              ),
-            })[0]?.id ?? overId
+            overId =
+              closestCenter({
+                ...args,
+                droppableContainers: args.droppableContainers.filter(
+                  c => c.id !== overId && colItems.includes(c.id),
+                ),
+              })[0]?.id ?? overId
           }
         }
         lastOverId.current = overId
@@ -137,7 +132,7 @@ export function KanbanBoard({
       }
       return lastOverId.current ? [{ id: lastOverId.current }] : []
     },
-    [activeId, columnMap]
+    [activeId, columnMap],
   )
 
   function handleAddTask(status: Status) {
@@ -148,7 +143,13 @@ export function KanbanBoard({
       project: defaultProject,
       status,
     }
-    onUpsertTask(newTask)
+
+    setColumnMap(prev => ({
+      ...prev,
+      [status]: [...prev[status], newTask.id],
+    }))
+
+    onCreateTask(newTask)
     onEditingChange(newTask.id)
   }
 
@@ -157,16 +158,21 @@ export function KanbanBoard({
     clonedColumnMap.current = columnMap
   }
 
-  function handleDragOver({ active, over }: { active: { id: UniqueIdentifier }, over: { id: UniqueIdentifier } | null }) {
+  function handleDragOver({
+    active,
+    over,
+  }: {
+    active: { id: UniqueIdentifier }
+    over: { id: UniqueIdentifier } | null
+  }) {
     const overId = over?.id
     if (overId == null) return
 
     const overContainer = findContainer(overId)
     const activeContainer = findContainer(active.id)
     if (!overContainer || !activeContainer) return
-    if (activeContainer === overContainer) return  // Same column — handled in dragEnd
+    if (activeContainer === overContainer) return
 
-    // Moving to a different column
     setColumnMap(prev => {
       const activeItems = prev[activeContainer]
       const overItems = prev[overContainer]
@@ -180,9 +186,13 @@ export function KanbanBoard({
         const isBelowOverItem =
           over &&
           'rect' in over &&
-          (over as { rect: { top: number; height: number } }).rect.top !== undefined
+          (over as { rect: { top: number; height: number } }).rect.top !==
+            undefined
 
-        newIndex = overIndex >= 0 ? overIndex + (isBelowOverItem ? 1 : 0) : overItems.length + 1
+        newIndex =
+          overIndex >= 0
+            ? overIndex + (isBelowOverItem ? 1 : 0)
+            : overItems.length + 1
       }
 
       recentlyMovedToNewContainer.current = true
@@ -199,7 +209,13 @@ export function KanbanBoard({
     })
   }
 
-  function handleDragEnd({ active, over }: { active: { id: UniqueIdentifier }, over: { id: UniqueIdentifier } | null }) {
+  function handleDragEnd({
+    active,
+    over,
+  }: {
+    active: { id: UniqueIdentifier }
+    over: { id: UniqueIdentifier } | null
+  }) {
     const activeContainer = findContainer(active.id)
     if (!activeContainer) {
       setActiveId(null)
@@ -225,12 +241,15 @@ export function KanbanBoard({
     if (activeIndex !== overIndex && activeContainer === overContainer) {
       finalMap = {
         ...columnMap,
-        [overContainer]: arrayMove(columnMap[overContainer], activeIndex, overIndex),
+        [overContainer]: arrayMove(
+          columnMap[overContainer],
+          activeIndex,
+          overIndex,
+        ),
       }
       setColumnMap(finalMap)
     }
 
-    // Commit to parent
     onTasksChange(applyColumnMap(tasksRef.current, finalMap))
     setActiveId(null)
     clonedColumnMap.current = null
@@ -277,18 +296,12 @@ export function KanbanBoard({
 
       <DragOverlay dropAnimation={{ duration: 150, easing: 'ease-out' }}>
         {activeTask && (
-          <KanbanCardUI
-            task={activeTask}
-            projects={projects}
-            isOverlay
-          />
+          <KanbanCardUI task={activeTask} projects={projects} isOverlay />
         )}
       </DragOverlay>
     </DndContext>
   )
 }
-
-// ----- DroppableColumn (internal) -----
 
 interface DroppableColumnProps {
   column: Column
@@ -315,15 +328,18 @@ function DroppableColumn({
 }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const taskById = Object.fromEntries(allTasks.map(t => [t.id, t]))
-  const orderedTasks = taskIds.map(id => taskById[id as string]).filter(Boolean)
+  const orderedTasks = taskIds
+    .map(id => taskById[id as string])
+    .filter(Boolean)
 
   return (
     <div className="flex flex-col w-72 shrink-0">
-      {/* Column header */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
           <span className={cn('w-2.5 h-2.5 rounded-full', column.color)} />
-          <h2 className="text-sm font-semibold text-foreground">{column.title}</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            {column.title}
+          </h2>
           <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 font-medium tabular-nums">
             {taskIds.length}
           </span>
@@ -338,7 +354,6 @@ function DroppableColumn({
         </Button>
       </div>
 
-      {/* Drop zone */}
       <div
         ref={setNodeRef}
         className={cn(
@@ -347,7 +362,10 @@ function DroppableColumn({
           isOver && 'bg-primary/5 ring-2 ring-primary/20',
         )}
       >
-        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
+        <SortableContext
+          items={taskIds}
+          strategy={verticalListSortingStrategy}
+        >
           {orderedTasks.map(task => {
             const isEditing = editingTaskId === task.id
             const isNew = !task.title?.trim()
@@ -382,5 +400,3 @@ function DroppableColumn({
     </div>
   )
 }
-
-

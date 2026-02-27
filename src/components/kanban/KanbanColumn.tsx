@@ -2,7 +2,7 @@
 
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Task, Column } from '@/lib/types'
+import { Task, Column, ApiProject } from '@/lib/types'
 import { KanbanCard } from './KanbanCard'
 import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 interface KanbanColumnProps {
   column: Column
   tasks: Task[]
+  projects: ApiProject[]
   onEdit: (task: Task) => void
   onDelete: (id: string) => void
   onAddTask: (status: Task['status']) => void
@@ -22,6 +23,7 @@ interface KanbanColumnProps {
 export function KanbanColumn({
   column,
   tasks,
+  projects,
   onEdit,
   onDelete,
   onAddTask,
@@ -69,6 +71,7 @@ export function KanbanColumn({
               <KanbanCard
                 key={task.id}
                 task={task}
+                projects={projects}
                 isEditing={isEditing}
                 onEdit={onEdit}
                 onDelete={onDelete}
