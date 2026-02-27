@@ -1,10 +1,9 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Task, Status } from '@/lib/types'
+import { Task } from '@/lib/types'
 import { INITIAL_TASKS } from '@/lib/mock-data'
 import { KanbanBoard } from '@/components/kanban/KanbanBoard'
-import { AddTaskModal } from '@/components/kanban/AddTaskModal'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { MetricsDashboard } from '@/components/dashboard/MetricsDashboard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -15,10 +14,9 @@ import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun } from 'lucide-rea
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [editTask, setEditTask] = useState<Task | null>(null)
-  const [defaultStatus, setDefaultStatus] = useState<Status>('backlog')
   const [isDark, setIsDark] = useState(false)
+  const [activeTab, setActiveTab] = useState<'kanban' | 'calendario' | 'dashboard'>('kanban')
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
 
   // Load dark mode preference
   useEffect(() => {
@@ -120,20 +118,9 @@ export default function Home() {
     setTasks(prev => prev.filter(t => t.id !== id))
   }
 
-  function handleEditTask(task: Task) {
-    setEditTask(task)
-    setModalOpen(true)
-  }
-
-  function handleAddTask(status: Status) {
-    setEditTask(null)
-    setDefaultStatus(status)
-    setModalOpen(true)
-  }
-
-  function handleModalClose() {
-    setModalOpen(false)
-    setEditTask(null)
+  function handleCalendarEdit(task: Task) {
+    setActiveTab('kanban')
+    setEditingTaskId(task.id)
   }
 
   if (!isLoaded) return null
@@ -182,7 +169,11 @@ export default function Home() {
 
       {/* Main content */}
       <main className="max-w-screen-xl mx-auto px-4 sm:px-6 py-6">
-        <Tabs defaultValue="kanban" className="space-y-6">
+        <Tabs
+          value={activeTab}
+          onValueChange={value => setActiveTab(value as 'kanban' | 'calendario' | 'dashboard')}
+          className="space-y-6"
+        >
           <TabsList className="bg-muted/50 border border-border/60 rounded-xl p-1 h-auto gap-1">
             <TabsTrigger
               value="kanban"
@@ -212,15 +203,16 @@ export default function Home() {
             <KanbanBoard
               tasks={tasks}
               onTasksChange={handleTasksChange}
-              onEdit={handleEditTask}
               onDelete={handleDeleteTask}
-              onAddTask={handleAddTask}
+              onUpsertTask={handleSaveTask}
+              editingTaskId={editingTaskId}
+              onEditingChange={setEditingTaskId}
             />
           </TabsContent>
 
           {/* Calendar Tab */}
           <TabsContent value="calendario" className="mt-0">
-            <CalendarView tasks={tasks} onEditTask={handleEditTask} />
+            <CalendarView tasks={tasks} onEditTask={handleCalendarEdit} />
           </TabsContent>
 
           {/* Dashboard Tab */}
@@ -229,16 +221,6 @@ export default function Home() {
           </TabsContent>
         </Tabs>
       </main>
-
-      {/* Add/Edit Task Modal */}
-      <AddTaskModal
-        key={`${modalOpen}-${editTask?.id ?? 'new'}`}
-        open={modalOpen}
-        onClose={handleModalClose}
-        onSave={handleSaveTask}
-        editTask={editTask}
-        defaultStatus={defaultStatus}
-      />
     </div>
   )
 }
