@@ -12,7 +12,9 @@ import { Badge } from '@/components/ui/badge'
 import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '@/lib/api/tasks'
+import { projectsApi } from '@/lib/api/projects'
 import { type WeekRange, getWeekRange, parseTaskDate } from '@/lib/date-utils'
+import { ApiProject } from '@/lib/types'
 
 function filterByWeek(tasks: Task[], range: WeekRange | undefined): Task[] {
   if (!range) return tasks
@@ -42,6 +44,11 @@ export default function Home() {
   const { data: tasks = [] } = useQuery<Task[]>({
     queryKey: ['tasks'],
     queryFn: tasksApi.getAll,
+  })
+
+  const { data: projects = [] } = useQuery<ApiProject[]>({
+    queryKey: ['projects'],
+    queryFn: projectsApi.getAll,
   })
 
   const createTaskMutation = useMutation({
@@ -195,6 +202,7 @@ export default function Home() {
             </div>
             <KanbanBoard
               tasks={kanbanTasks}
+              projects={projects}
               onTasksChange={handleTasksChange}
               onDelete={handleDeleteTask}
               onUpsertTask={handleSaveTask}
@@ -204,11 +212,11 @@ export default function Home() {
           </TabsContent>
 
           <TabsContent value="calendario" className="mt-0">
-            <CalendarView tasks={tasks} onEditTask={handleCalendarEdit} />
+            <CalendarView tasks={tasks} projects={projects} onEditTask={handleCalendarEdit} />
           </TabsContent>
 
           <TabsContent value="dashboard" className="mt-0">
-            <MetricsDashboard tasks={tasks} />
+            <MetricsDashboard tasks={tasks} projects={projects} />
           </TabsContent>
         </Tabs>
       </main>
