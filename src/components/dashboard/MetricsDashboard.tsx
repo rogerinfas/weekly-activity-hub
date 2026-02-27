@@ -16,9 +16,6 @@ export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
   const stats = useMemo(() => {
     const completed = tasks.filter(t => t.status === 'completado').length
     const inProgress = tasks.filter(t => t.status === 'en-progreso').length
-    const totalHours = tasks
-      .filter(t => t.status === 'completado')
-      .reduce((acc, t) => acc + (t.estimatedHours ?? 0), 0)
     const topProject = Object.entries(
       tasks.reduce<Record<string, number>>((acc, t) => {
         acc[t.project] = (acc[t.project] ?? 0) + 1
@@ -26,7 +23,7 @@ export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
       }, {})
     ).sort((a, b) => b[1] - a[1])[0]
 
-    return { completed, inProgress, totalHours, topProject }
+    return { completed, inProgress, topProject }
   }, [tasks])
 
   return (
@@ -49,8 +46,8 @@ export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
         />
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" />}
-          label="Horas completadas"
-          value={`${stats.totalHours.toFixed(1)}h`}
+          label="Tareas totales"
+          value={tasks.length}
           color="text-blue-500"
           bg="bg-blue-500/10"
         />
