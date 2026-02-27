@@ -17,11 +17,6 @@ export function WeeklyProgressChart({ tasks }: WeeklyProgressChartProps) {
   const completedPct = total > 0 ? Math.round((completed / total) * 100) : 0
   const inProgressPct = total > 0 ? Math.round((inProgress / total) * 100) : 0
 
-  const totalHours = tasks.reduce((acc, t) => acc + (t.estimatedHours ?? 0), 0)
-  const completedHours = tasks
-    .filter(t => t.status === 'completado')
-    .reduce((acc, t) => acc + (t.estimatedHours ?? 0), 0)
-
   return (
     <Card className="rounded-2xl border-border/60 shadow-sm">
       <CardHeader className="pb-2">
@@ -64,13 +59,7 @@ export function WeeklyProgressChart({ tasks }: WeeklyProgressChartProps) {
           <StatChip icon={<Circle className="h-3.5 w-3.5 text-slate-400" />} label="Pendientes" value={backlog} />
         </div>
 
-        {/* Hours */}
-        <div className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2.5 text-xs">
-          <span className="text-muted-foreground">Horas completadas</span>
-          <span className="font-semibold text-foreground tabular-nums">
-            {completedHours.toFixed(1)} / {totalHours.toFixed(1)}h
-          </span>
-        </div>
+        {/* Extra summary (optional) */}
       </CardContent>
     </Card>
   )
