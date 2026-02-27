@@ -6,11 +6,12 @@ const geistSans = Geist({
   variable: '--font-geist-sans',
   subsets: ['latin'],
 })
-
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
 })
+
+import { Providers } from './providers'
 
 export const metadata: Metadata = {
   title: 'Weekly Activity Hub',
@@ -25,9 +26,10 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )
 }
-
