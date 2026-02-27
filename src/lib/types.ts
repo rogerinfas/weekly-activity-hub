@@ -11,7 +11,6 @@ export interface Task {
   status: Status
   date?: string        // Optional start/due date
   completedAt?: string // Auto-set when moved to 'completado', auto-cleared on move out
-  estimatedHours?: number
 }
 
 export interface Column {
