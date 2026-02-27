@@ -10,8 +10,9 @@ export interface Task {
   project: Project
   status: Status
   date?: string        // Optional start/due date
-  createdAt?: string   // Auto-set when task is first created
-  completedAt?: string // Auto-set when moved to 'completado', auto-cleared on move out
+  order?: number       // Column position, managed by drag-and-drop
+  createdAt?: string   // Set by the server on creation
+  completedAt?: string // Set/cleared by the server on status transitions
 }
 
 export interface Column {
