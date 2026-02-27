@@ -22,11 +22,11 @@ interface MonthlyHistoryChartProps {
 const chartConfig = {
   total: {
     label: 'Con actividad',
-    color: 'hsl(var(--muted-foreground) / 0.3)',
+    color: 'var(--chart-5)',   /* slate – fondo neutro */
   },
   completadas: {
     label: 'Completadas',
-    color: '#8b5cf6',
+    color: 'var(--chart-4)',   /* amber – color primario del tema */
   },
 } satisfies ChartConfig
 
@@ -75,11 +75,7 @@ export function MonthlyHistoryChart({ tasks }: MonthlyHistoryChartProps) {
               tickLine={false}
             />
             <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  labelFormatter={(_, payload) => payload?.[0]?.payload?.date ?? ''}
-                />
-              }
+              content={<ChartTooltipContent labelKey="date" />}
             />
             <ChartLegend content={<ChartLegendContent />} />
             <Bar dataKey="total" fill="var(--color-total)" radius={[4, 4, 0, 0]} />
