@@ -97,24 +97,6 @@ export default function Home() {
   const total = kanbanTasks.length
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
 
-  const kanbanTasks = useMemo(() => {
-    if (!kanbanWeekRange) return tasks
-
-    const { startDate, endDate } = kanbanWeekRange
-    const startOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-    const endOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate())
-
-    return tasks.filter(task => {
-      const input = task.date ?? task.createdAt
-      if (!input) return false
-
-      const parsed = parseTaskDate(input)
-      const dateOnly = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate())
-
-      return dateOnly >= startOnly && dateOnly <= endOnly
-    })
-  }, [tasks, kanbanWeekRange])
-
   function handleSaveTask(task: Task) {
     const exists = tasks.find(t => t.id === task.id)
 
