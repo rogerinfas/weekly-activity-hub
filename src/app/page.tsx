@@ -103,7 +103,7 @@ export default function Home() {
     setTasks(prev => {
       const exists = prev.find(t => t.id === task.id)
       const processed = applyCompletedAt(task, exists)
-      return exists ? prev.map(t => t.id === task.id ? processed : t) : [...prev, processed]
+      return exists ? prev.map(t => t.id === task.id ? processed : t) : [processed, ...prev]
     })
   }
 
