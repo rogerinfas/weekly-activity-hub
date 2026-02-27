@@ -3,14 +3,14 @@
 import { useMemo } from 'react'
 import { Task, PROJECT_HEX, PROJECT_LABELS, Project } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { PieChart, Pie, Cell, Tooltip } from 'recharts'
 import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts'
+  ChartContainer,
+  ChartTooltipContent,
+  ChartLegendContent,
+  ChartLegend,
+  type ChartConfig,
+} from '@/components/ui/chart'
 
 interface CategoryPieChartProps {
   tasks: Task[]
@@ -23,11 +23,37 @@ export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
       return acc
     }, {})
     return Object.entries(counts).map(([proj, count]) => ({
+      project: proj,
       name: PROJECT_LABELS[proj as Project] ?? proj,
       value: count,
-      color: PROJECT_HEX[proj as Project] ?? '#64748b',
+      fill: PROJECT_HEX[proj as Project] ?? '#64748b',
     }))
   }, [tasks])
+
+  const chartConfig = useMemo(() => {
+    return data.reduce<ChartConfig>((acc, entry) => {
+      acc[entry.project] = {
+        label: entry.name,
+        color: entry.fill,
+      }
+      return acc
+    }, {})
+  }, [data])
+
+  if (data.length === 0) {
+    return (
+      <Card className="rounded-2xl border-border/60 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">Distribución por proyecto</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+            Sin datos
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card className="rounded-2xl border-border/60 shadow-sm">
@@ -35,45 +61,27 @@ export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
         <CardTitle className="text-sm font-semibold">Distribución por proyecto</CardTitle>
       </CardHeader>
       <CardContent>
-        {data.length === 0 ? (
-          <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-            Sin datos
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="45%"
-                innerRadius={55}
-                outerRadius={85}
-                paddingAngle={3}
-                dataKey="value"
-                strokeWidth={0}
-              >
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                }}
-                formatter={(value, name) => [`${value} tareas`, name]}
-              />
-              <Legend
-                iconType="circle"
-                iconSize={8}
-                wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        )}
+        <ChartContainer config={chartConfig} className="mx-auto max-h-[240px] w-full">
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={55}
+              outerRadius={85}
+              paddingAngle={3}
+              strokeWidth={0}
+            >
+              {data.map((entry) => (
+                <Cell key={entry.project} fill={entry.fill} />
+              ))}
+            </Pie>
+            <Tooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
+            <ChartLegend content={<ChartLegendContent nameKey="name" />} />
+          </PieChart>
+        </ChartContainer>
       </CardContent>
     </Card>
   )
