@@ -10,7 +10,7 @@ import { MetricsDashboard } from '@/components/dashboard/MetricsDashboard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { LayoutGrid, Calendar, BarChart3, Plus, Sparkles, Moon, Sun } from 'lucide-react'
+import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun } from 'lucide-react'
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([])
@@ -175,15 +175,6 @@ export default function Home() {
               aria-label="Cambiar modo oscuro"
             >
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-
-            <Button
-              size="sm"
-              className="gap-1.5 h-8 text-xs rounded-full"
-              onClick={() => handleAddTask('backlog')}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Nueva tarea</span>
             </Button>
           </div>
         </div>
