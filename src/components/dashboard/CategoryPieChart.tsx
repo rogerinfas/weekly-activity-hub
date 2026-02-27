@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Task, PROJECT_HEX, PROJECT_LABELS, Project } from '@/lib/types'
+import { Task, ApiProject, getProjectHex, getProjectLabel } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart, Pie, Cell, Tooltip } from 'recharts'
 import {
@@ -13,9 +13,10 @@ import {
 
 interface CategoryPieChartProps {
   tasks: Task[]
+  projects: ApiProject[]
 }
 
-export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
+export function CategoryPieChart({ tasks, projects }: CategoryPieChartProps) {
   const data = useMemo(() => {
     const counts = tasks.reduce<Record<string, number>>((acc, t) => {
       acc[t.project] = (acc[t.project] ?? 0) + 1
@@ -23,11 +24,11 @@ export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
     }, {})
     return Object.entries(counts).map(([proj, count]) => ({
       project: proj,
-      name: PROJECT_LABELS[proj as Project] ?? proj,
+      name: getProjectLabel(projects, proj),
       value: count,
-      fill: PROJECT_HEX[proj as Project] ?? '#64748b',
+      fill: getProjectHex(projects, proj),
     }))
-  }, [tasks])
+  }, [tasks, projects])
 
   const chartConfig = useMemo(() => {
     return data.reduce<ChartConfig>((acc, entry) => {
