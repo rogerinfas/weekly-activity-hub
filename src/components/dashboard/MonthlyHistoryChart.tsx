@@ -31,6 +31,21 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function MonthlyHistoryChart({ tasks }: MonthlyHistoryChartProps) {
+  if (tasks.length === 0) {
+    return (
+      <Card className="rounded-2xl border-border/60 shadow-sm h-full flex flex-col">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">Historial del mes (Últimos 30 días)</CardTitle>
+        </CardHeader>
+        <CardContent className="flex-1 flex items-center justify-center">
+          <div className="text-sm text-muted-foreground pb-8">
+            Sin datos
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const data = useMemo(() => {
     const today = new Date()
     return Array.from({ length: 14 }, (_, i) => {

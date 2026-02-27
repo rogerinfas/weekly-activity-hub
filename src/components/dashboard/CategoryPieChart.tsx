@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { PieChart, Pie, Cell, Tooltip } from 'recharts'
 import {
   ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
 
@@ -72,14 +74,8 @@ export function CategoryPieChart({ tasks }: CategoryPieChartProps) {
                 <Cell key={entry.project} fill={entry.fill} />
               ))}
             </Pie>
-            <Tooltip
-              contentStyle={{
-                background: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
-                borderRadius: '8px',
-                fontSize: '12px',
-              }}
-              formatter={(value, name) => [`${value} tareas`, name]}
+            <ChartTooltip
+              content={<ChartTooltipContent hideLabel />}
             />
           </PieChart>
         </ChartContainer>

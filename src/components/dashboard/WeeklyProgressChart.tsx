@@ -17,6 +17,21 @@ export function WeeklyProgressChart({ tasks }: WeeklyProgressChartProps) {
   const completedPct = total > 0 ? Math.round((completed / total) * 100) : 0
   const inProgressPct = total > 0 ? Math.round((inProgress / total) * 100) : 0
 
+  if (tasks.length === 0) {
+    return (
+      <Card className="rounded-2xl border-border/60 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold">Progreso</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">
+            Sin datos
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="rounded-2xl border-border/60 shadow-sm">
       <CardHeader className="pb-2">

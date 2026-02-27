@@ -4,30 +4,65 @@ import { Task } from '@/lib/types'
 import { WeeklyProgressChart } from './WeeklyProgressChart'
 import { CategoryPieChart } from './CategoryPieChart'
 import { MonthlyHistoryChart } from './MonthlyHistoryChart'
+import { WeekFilter } from './WeekFilter'
+import { type WeekRange, getWeekRange } from '@/lib/date-utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { TrendingUp, Zap, Target, Award } from 'lucide-react'
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 
 interface MetricsDashboardProps {
   tasks: Task[]
 }
 
 export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
+  // Por defecto inicializamos con la semana actual
+  const [selectedWeekRange, setSelectedWeekRange] = useState<WeekRange | undefined>(() => getWeekRange(new Date()))
+
+  // Filtramos las tareas según el rango seleccionado (usamos date o createdAt para ubicarlas)
+  const filteredTasks = useMemo(() => {
+    if (!selectedWeekRange) return tasks
+
+    return tasks.filter(t => {
+      // Usamos t.date si existe, si no, t.createdAt
+      const taskDateInput = t.date || t.createdAt || new Date().toISOString()
+      const taskDate = new Date(taskDateInput)
+
+      // Ajustamos hora a 00:00:00 para comparación segura
+      const dateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate())
+      const startOnly = new Date(selectedWeekRange.startDate.getFullYear(), selectedWeekRange.startDate.getMonth(), selectedWeekRange.startDate.getDate())
+      const endOnly = new Date(selectedWeekRange.endDate.getFullYear(), selectedWeekRange.endDate.getMonth(), selectedWeekRange.endDate.getDate())
+
+      return dateOnly >= startOnly && dateOnly <= endOnly
+    })
+  }, [tasks, selectedWeekRange])
+
+
   const stats = useMemo(() => {
-    const completed = tasks.filter(t => t.status === 'completado').length
-    const inProgress = tasks.filter(t => t.status === 'en-progreso').length
-    const topProject = Object.entries(
-      tasks.reduce<Record<string, number>>((acc, t) => {
-        acc[t.project] = (acc[t.project] ?? 0) + 1
-        return acc
-      }, {})
-    ).sort((a, b) => b[1] - a[1])[0]
+    const completed = filteredTasks.filter(t => t.status === 'completado').length
+    const inProgress = filteredTasks.filter(t => t.status === 'en-progreso').length
+
+    // Top project based on filtered tasks
+    const projectCounts = filteredTasks.reduce<Record<string, number>>((acc, t) => {
+      acc[t.project] = (acc[t.project] ?? 0) + 1
+      return acc
+    }, {})
+
+    const sortedProjects = Object.entries(projectCounts).sort((a, b) => b[1] - a[1])
+    const topProject = sortedProjects.length > 0 ? sortedProjects[0] : null
 
     return { completed, inProgress, topProject }
-  }, [tasks])
+  }, [filteredTasks])
 
   return (
     <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold tracking-tight">Resumen de Métricas</h2>
+        <WeekFilter
+          value={selectedWeekRange}
+          onChange={setSelectedWeekRange}
+        />
+      </div>
+
       {/* Top KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard
@@ -47,7 +82,7 @@ export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" />}
           label="Tareas totales"
-          value={tasks.length}
+          value={filteredTasks.length}
           color="text-blue-500"
           bg="bg-blue-500/10"
         />
@@ -63,10 +98,10 @@ export function MetricsDashboard({ tasks }: MetricsDashboardProps) {
 
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <WeeklyProgressChart tasks={tasks} />
-        <CategoryPieChart tasks={tasks} />
+        <WeeklyProgressChart tasks={filteredTasks} />
+        <CategoryPieChart tasks={filteredTasks} />
         <div className="lg:col-span-1">
-          <MonthlyHistoryChart tasks={tasks} />
+          <MonthlyHistoryChart tasks={filteredTasks} />
         </div>
       </div>
     </div>
