@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Task, PROJECT_COLORS, PROJECT_LABELS } from '@/lib/types'
 import { Badge } from '@/components/ui/badge'
-import { Clock, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
+import { Pencil, Trash2, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -76,7 +76,7 @@ export function KanbanCard({ task, onEdit, onDelete }: KanbanCardProps) {
         </p>
       )}
 
-      {/* Footer: project badge + hours */}
+      {/* Footer: project badge */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <Badge
           variant="outline"
@@ -84,12 +84,6 @@ export function KanbanCard({ task, onEdit, onDelete }: KanbanCardProps) {
         >
           {PROJECT_LABELS[task.project]}
         </Badge>
-        {task.estimatedHours && (
-          <span className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground">
-            <Clock className="h-2.5 w-2.5" />
-            {task.estimatedHours}h
-          </span>
-        )}
       </div>
 
       {/* Completion date — auto-set by the system */}
@@ -147,12 +141,6 @@ export function KanbanCardUI({ task, isOverlay }: KanbanCardUIProps) {
         >
           {PROJECT_LABELS[task.project]}
         </Badge>
-        {task.estimatedHours && (
-          <span className="ml-auto flex items-center gap-0.5 text-[10px] text-muted-foreground">
-            <Clock className="h-2.5 w-2.5" />
-            {task.estimatedHours}h
-          </span>
-        )}
       </div>
     </div>
   )
