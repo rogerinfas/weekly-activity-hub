@@ -253,6 +253,12 @@ function CardContent({ task, isEditing, onEdit, onDelete, onSave, onCancel }: Ca
 
       {/* Footer: project badge / project selector */}
       <div className="flex items-center gap-1.5 flex-wrap">
+        {/* createdAt chip — view mode only */}
+        {!isEditing && task.createdAt && (
+          <span className="text-[9px] text-muted-foreground/60 bg-muted/50 rounded px-1 py-0.5">
+            Creada {new Date(task.createdAt + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+          </span>
+        )}
         {isEditing ? (
           /* Inline project picker: cycle through options on click, no popup */
           <div className="flex flex-wrap gap-1">

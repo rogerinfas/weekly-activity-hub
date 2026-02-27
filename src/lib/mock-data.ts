@@ -15,6 +15,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Hay 4 pull requests esperando revisión en el repositorio principal.',
     project: 'desarrollo',
     status: 'backlog',
+    createdAt: fmt(-7),
   },
   {
     id: '2',
@@ -22,6 +23,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Nuevo hero section y sección de precios.',
     project: 'diseño',
     status: 'backlog',
+    createdAt: fmt(-5),
   },
   {
     id: '3',
@@ -29,6 +31,7 @@ export const INITIAL_TASKS: Task[] = [
     project: 'marketing',
     status: 'backlog',
     date: fmt(3),
+    createdAt: fmt(-4),
   },
   {
     id: '4',
@@ -36,6 +39,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'App Router, Server Actions, Partial Prerendering.',
     project: 'desarrollo',
     status: 'backlog',
+    createdAt: fmt(-3),
   },
   {
     id: '5',
@@ -43,6 +47,7 @@ export const INITIAL_TASKS: Task[] = [
     project: 'personal',
     status: 'backlog',
     date: fmt(1),
+    createdAt: fmt(-2),
   },
 
   // En Progreso
@@ -53,6 +58,7 @@ export const INITIAL_TASKS: Task[] = [
     project: 'desarrollo',
     status: 'en-progreso',
     date: fmt(0),
+    createdAt: fmt(-6),
   },
   {
     id: '7',
@@ -60,6 +66,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Paleta de colores dark/light para el design system.',
     project: 'diseño',
     status: 'en-progreso',
+    createdAt: fmt(-5),
   },
   {
     id: '8',
@@ -67,12 +74,14 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Secuencia de 4 emails onboarding.',
     project: 'marketing',
     status: 'en-progreso',
+    createdAt: fmt(-4),
   },
   {
     id: '9',
     title: 'Actualizar CV y LinkedIn',
     project: 'personal',
     status: 'en-progreso',
+    createdAt: fmt(-3),
   },
 
   // Completado
@@ -82,6 +91,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Next.js + Tailwind + Shadcn UI configurados y funcionando.',
     project: 'desarrollo',
     status: 'completado',
+    createdAt: fmt(-10),
     completedAt: fmt(-2),
   },
   {
@@ -89,6 +99,7 @@ export const INITIAL_TASKS: Task[] = [
     title: 'Wireframes de dashboard',
     project: 'diseño',
     status: 'completado',
+    createdAt: fmt(-9),
     completedAt: fmt(-3),
   },
   {
@@ -97,6 +108,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Daily standup extendido con el equipo.',
     project: 'marketing',
     status: 'completado',
+    createdAt: fmt(-8),
     completedAt: fmt(-4),
   },
   {
@@ -105,6 +117,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Separar lógica de presentación en el componente DataTable.',
     project: 'desarrollo',
     status: 'completado',
+    createdAt: fmt(-8),
     completedAt: fmt(-2),
   },
   {
@@ -112,6 +125,7 @@ export const INITIAL_TASKS: Task[] = [
     title: 'Revisión de métricas mensuales',
     project: 'marketing',
     status: 'completado',
+    createdAt: fmt(-10),
     completedAt: fmt(-5),
   },
   {
@@ -120,6 +134,7 @@ export const INITIAL_TASKS: Task[] = [
     description: 'Revisar y actualizar OKRs personales.',
     project: 'personal',
     status: 'completado',
+    createdAt: fmt(-12),
     completedAt: fmt(-6),
   },
 ]

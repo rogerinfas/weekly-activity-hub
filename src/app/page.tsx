@@ -102,7 +102,11 @@ export default function Home() {
   function handleSaveTask(task: Task) {
     setTasks(prev => {
       const exists = prev.find(t => t.id === task.id)
-      const processed = applyCompletedAt(task, exists)
+      const today = new Date().toISOString().split('T')[0]
+      const withCreatedAt: Task = exists
+        ? task
+        : { ...task, createdAt: task.createdAt ?? today }
+      const processed = applyCompletedAt(withCreatedAt, exists)
       return exists ? prev.map(t => t.id === task.id ? processed : t) : [processed, ...prev]
     })
   }
