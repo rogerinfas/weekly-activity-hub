@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { Task } from '@/lib/types'
-import { INITIAL_TASKS } from '@/lib/mock-data'
 import { KanbanBoard } from '@/components/kanban/KanbanBoard'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { MetricsDashboard } from '@/components/dashboard/MetricsDashboard'
@@ -10,13 +9,42 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LayoutGrid, Calendar, BarChart3, Sparkles, Moon, Sun } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { tasksApi } from '@/lib/api/tasks'
 
 export default function Home() {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [isLoaded, setIsLoaded] = useState(false)
+  const queryClient = useQueryClient()
   const [isDark, setIsDark] = useState(false)
   const [activeTab, setActiveTab] = useState<'kanban' | 'calendario' | 'dashboard'>('kanban')
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+
+  // -- React Query Data Management --
+  const { data: tasks = [], isLoading: isLoaded } = useQuery<Task[]>({
+    queryKey: ['tasks'],
+    queryFn: tasksApi.getAll,
+  })
+
+  const createTaskMutation = useMutation({
+    mutationFn: tasksApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
+  })
+
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<Task> }) => tasksApi.update(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
+  })
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: tasksApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
+  })
+
 
   // Load dark mode preference
   useEffect(() => {
@@ -34,92 +62,60 @@ export default function Home() {
     localStorage.setItem('wah-dark', String(next))
   }
 
-  // Load from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('wah-tasks')
-    let tasksToSet = INITIAL_TASKS
-    if (saved) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const raw: any[] = JSON.parse(saved)
-        tasksToSet = raw.map(t => {
-          // Map old 'category' field to 'project' if needed
-          const categoryToProject: Record<string, string> = {
-            trabajo: 'desarrollo',
-            aprendizaje: 'desarrollo',
-            salud: 'personal',
-            personal: 'personal',
-            otro: 'otro',
-          }
-          return {
-            ...t,
-            project: t.project ?? categoryToProject[t.category] ?? 'otro',
-            // Remove legacy fields
-            category: undefined,
-            priority: undefined,
-          } as Task
-        })
-      } catch (e) {
-        console.error('Failed to load tasks', e)
-      }
-    }
-
-    // Defer state updates to avoid "synchronous state update in effect" lint error
-    setTimeout(() => {
-      setTasks(tasksToSet)
-      setIsLoaded(true)
-    }, 0)
-  }, [])
-
-  // Save to localStorage (debounced)
-  useEffect(() => {
-    if (isLoaded) {
-      const timeout = setTimeout(() => {
-        localStorage.setItem('wah-tasks', JSON.stringify(tasks))
-      }, 500)
-      return () => clearTimeout(timeout)
-    }
-  }, [tasks, isLoaded])
-
   const completedCount = useMemo(() => tasks.filter(t => t.status === 'completado').length, [tasks])
   const total = tasks.length
   const progressPct = total > 0 ? Math.round((completedCount / total) * 100) : 0
 
   // Auto-manages completedAt: sets today when moved to 'completado', clears otherwise
   function applyCompletedAt(task: Task, prevTask?: Task): Task {
-    const today = new Date().toISOString().split('T')[0]
-    if (task.status === 'completado' && prevTask?.status !== 'completado') {
+    const today = new Date().toISOString()
+    const isCompletedNow = task.status === 'completado';
+    const wasCompletedBefore = prevTask?.status === 'completado';
+
+    if (isCompletedNow && !wasCompletedBefore) {
       return { ...task, completedAt: today }
     }
-    if (task.status !== 'completado' && task.completedAt) {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { completedAt: _, ...rest } = task
-      return rest
+
+    if (!isCompletedNow && task.completedAt) {
+      // API will set it to null or undefined
+      return { ...task, completedAt: undefined as any }
     }
+
     return task
   }
 
   function handleSaveTask(task: Task) {
-    setTasks(prev => {
-      const exists = prev.find(t => t.id === task.id)
-      const today = new Date().toISOString().split('T')[0]
-      const withCreatedAt: Task = exists
-        ? task
-        : { ...task, createdAt: task.createdAt ?? today }
-      const processed = applyCompletedAt(withCreatedAt, exists)
-      return exists ? prev.map(t => t.id === task.id ? processed : t) : [processed, ...prev]
-    })
+    const exists = tasks.find(t => t.id === task.id)
+    const today = new Date().toISOString()
+
+    const withCreatedAt: Task = exists
+      ? task
+      : { ...task, createdAt: task.createdAt ?? today }
+
+    const processed = applyCompletedAt(withCreatedAt, exists)
+
+    if (exists) {
+      updateTaskMutation.mutate({ id: processed.id, payload: processed })
+    } else {
+      createTaskMutation.mutate(processed as Omit<Task, 'id' | 'createdAt' | 'completedAt'>)
+    }
   }
 
   function handleTasksChange(updatedTasks: Task[]) {
-    setTasks(prev => {
-      const prevById = Object.fromEntries(prev.map(t => [t.id, t]))
-      return updatedTasks.map(t => applyCompletedAt(t, prevById[t.id]))
+    // Only handles mass drag-n-drop or reorders
+    const prevById = Object.fromEntries(tasks.map(t => [t.id, t]))
+
+    updatedTasks.forEach((t) => {
+      const prev = prevById[t.id]
+      if (!prev || JSON.stringify(prev) !== JSON.stringify(t)) {
+        const processed = applyCompletedAt(t, prev)
+        updateTaskMutation.mutate({ id: processed.id!, payload: processed })
+      }
     })
   }
 
   function handleDeleteTask(id: string) {
-    setTasks(prev => prev.filter(t => t.id !== id))
+    deleteTaskMutation.mutate(id)
   }
 
   function handleCalendarEdit(task: Task) {
@@ -127,7 +123,8 @@ export default function Home() {
     setEditingTaskId(task.id)
   }
 
-  if (!isLoaded) return null
+  // Instead of completely hiding all the UI on load, we just show standard UI with empty states or a standard loader
+  // if (isLoaded) return null
 
   return (
     <div className="min-h-screen bg-background">
