@@ -21,18 +21,29 @@ import {
 } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Task, COLUMNS, Status, Column } from '@/lib/types'
+import { Task, COLUMNS, Status, Column, Project } from '@/lib/types'
 import { KanbanCard, KanbanCardUI } from './KanbanCard'
 import { cn } from '@/lib/utils'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface KanbanBoardProps {
   tasks: Task[]
   onTasksChange: (tasks: Task[]) => void
-  onEdit: (task: Task) => void
   onDelete: (id: string) => void
-  onAddTask: (status: Status) => void
+  onUpsertTask: (task: Task) => void
+  editingTaskId: string | null
+  onEditingChange: (id: string | null) => void
 }
 
 // Internal data structure: column id → ordered task ids
@@ -52,7 +63,14 @@ function applyColumnMap(source: Task[], columnMap: ColumnMap): Task[] {
   )
 }
 
-export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask }: KanbanBoardProps) {
+export function KanbanBoard({
+  tasks,
+  onTasksChange,
+  onDelete,
+  onUpsertTask,
+  editingTaskId,
+  onEditingChange,
+}: KanbanBoardProps) {
   const [columnMap, setColumnMap] = useState<ColumnMap>(() => tasksToColumnMap(tasks))
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null)
   const lastOverId = useRef<UniqueIdentifier | null>(null)
@@ -127,6 +145,17 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
     },
     [activeId, columnMap]
   )
+
+  function handleAddTask(status: Status) {
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      title: '',
+      project: 'desarrollo' as Project,
+      status,
+    }
+    onUpsertTask(newTask)
+    onEditingChange(newTask.id)
+  }
 
   function handleDragStart({ active }: { active: { id: UniqueIdentifier } }) {
     setActiveId(active.id)
@@ -241,9 +270,11 @@ export function KanbanBoard({ tasks, onTasksChange, onEdit, onDelete, onAddTask 
             column={column}
             taskIds={columnMap[column.id]}
             allTasks={tasks}
-            onEdit={onEdit}
             onDelete={onDelete}
-            onAddTask={onAddTask}
+            onAddTask={handleAddTask}
+            editingTaskId={editingTaskId}
+            onEditingChange={onEditingChange}
+            onUpsertTask={onUpsertTask}
           />
         ))}
       </div>
@@ -268,12 +299,23 @@ interface DroppableColumnProps {
   column: Column
   taskIds: UniqueIdentifier[]
   allTasks: Task[]
-  onEdit: (task: Task) => void
   onDelete: (id: string) => void
   onAddTask: (status: Status) => void
+  editingTaskId: string | null
+  onEditingChange: (id: string | null) => void
+  onUpsertTask: (task: Task) => void
 }
 
-function DroppableColumn({ column, taskIds, allTasks, onEdit, onDelete, onAddTask }: DroppableColumnProps) {
+function DroppableColumn({
+  column,
+  taskIds,
+  allTasks,
+  onDelete,
+  onAddTask,
+  editingTaskId,
+  onEditingChange,
+  onUpsertTask,
+}: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const taskById = Object.fromEntries(allTasks.map(t => [t.id, t]))
   const orderedTasks = taskIds.map(id => taskById[id as string]).filter(Boolean)
@@ -309,14 +351,39 @@ function DroppableColumn({ column, taskIds, allTasks, onEdit, onDelete, onAddTas
         )}
       >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          {orderedTasks.map(task => (
-            <KanbanCard
-              key={task.id}
-              task={task}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
+          {orderedTasks.map(task => {
+            const isEditing = editingTaskId === task.id
+            const isNew = !task.title?.trim()
+
+            if (isEditing) {
+              return (
+                <InlineTaskEditor
+                  key={task.id}
+                  task={task}
+                  isNew={isNew}
+                  onSave={updated => {
+                    onUpsertTask(updated)
+                    onEditingChange(null)
+                  }}
+                  onCancel={() => {
+                    if (isNew) {
+                      onDelete(task.id)
+                    }
+                    onEditingChange(null)
+                  }}
+                />
+              )
+            }
+
+            return (
+              <KanbanCard
+                key={task.id}
+                task={task}
+                onEdit={taskToEdit => onEditingChange(taskToEdit.id)}
+                onDelete={onDelete}
+              />
+            )
+          })}
         </SortableContext>
 
         {taskIds.length === 0 && (
@@ -326,5 +393,121 @@ function DroppableColumn({ column, taskIds, allTasks, onEdit, onDelete, onAddTas
         )}
       </div>
     </div>
+  )
+}
+
+// ----- InlineTaskEditor (internal) -----
+
+interface InlineTaskEditorProps {
+  task: Task
+  isNew: boolean
+  onSave: (task: Task) => void
+  onCancel: () => void
+}
+
+function InlineTaskEditor({ task, isNew, onSave, onCancel }: InlineTaskEditorProps) {
+  const [title, setTitle] = useState(task.title)
+  const [description, setDescription] = useState(task.description ?? '')
+  const [project, setProject] = useState<Project>(task.project)
+  const [estimatedHours, setEstimatedHours] = useState(
+    task.estimatedHours != null ? String(task.estimatedHours) : ''
+  )
+
+  const canSave = title.trim().length > 0
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!canSave) return
+
+    const updated: Task = {
+      ...task,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      project,
+      estimatedHours: estimatedHours ? parseFloat(estimatedHours) : undefined,
+    }
+    onSave(updated)
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className={cn(
+        'bg-card rounded-xl border border-border/60 p-3.5 shadow-sm space-y-2.5',
+        'ring-1 ring-primary/20'
+      )}
+    >
+      <div className="space-y-1">
+        <Label htmlFor={`title-${task.id}`} className="text-[11px]">
+          Título {isNew && <span className="text-destructive">*</span>}
+        </Label>
+        <Input
+          id={`title-${task.id}`}
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="¿Qué necesitas hacer?"
+          className="h-8 text-xs"
+          autoFocus
+        />
+      </div>
+
+      <div className="space-y-1">
+        <Label htmlFor={`desc-${task.id}`} className="text-[11px] text-muted-foreground">
+          Descripción <span className="text-muted-foreground/60">(opcional)</span>
+        </Label>
+        <Textarea
+          id={`desc-${task.id}`}
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+          placeholder="Añade detalles si quieres..."
+          className="min-h-[56px] text-xs resize-none"
+          rows={2}
+        />
+      </div>
+
+      <div className="grid grid-cols-[1.3fr,0.9fr] gap-2.5">
+        <div className="space-y-1">
+          <Label className="text-[11px]">Proyecto</Label>
+          <Select value={project} onValueChange={v => setProject(v as Project)}>
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desarrollo">Desarrollo</SelectItem>
+              <SelectItem value="diseño">Diseño</SelectItem>
+              <SelectItem value="marketing">Marketing</SelectItem>
+              <SelectItem value="personal">Personal</SelectItem>
+              <SelectItem value="otro">Otro</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor={`hours-${task.id}`} className="text-[11px] text-muted-foreground">
+            Horas (opcional)
+          </Label>
+          <Input
+            id={`hours-${task.id}`}
+            type="number"
+            min="0.25"
+            max="24"
+            step="0.25"
+            placeholder="ej. 1.5"
+            value={estimatedHours}
+            onChange={e => setEstimatedHours(e.target.value)}
+            className="h-8 text-xs"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 pt-1.5">
+        <Button type="button" size="xs" variant="outline" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="submit" size="xs" disabled={!canSave}>
+          Guardar
+        </Button>
+      </div>
+    </form>
   )
 }
