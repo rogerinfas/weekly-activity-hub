@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 import { Providers } from './providers'
 
 export const metadata: Metadata = {
-  title: 'Weekly Activity Hub',
-  description: 'Weekly Activity Hub: visual weekly planning with Kanban, Calendar and Metrics.',
+  title: 'ACIDE DIGITALES SCRUM',
+  description: 'ACIDE DIGITALES SCRUM: visual weekly planning with Kanban, Calendar and Metrics.',
 }
 
 export default function RootLayout({

@@ -214,7 +214,7 @@ export default function Home() {
               <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
             </div>
             <span className="text-sm font-semibold text-foreground hidden sm:block">
-              Weekly Activity Hub
+              ACIDE DIGITALES SCRUM
             </span>
           </div>
 
