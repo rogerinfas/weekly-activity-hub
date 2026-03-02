@@ -36,6 +36,7 @@ interface KanbanBoardProps {
   onUpsertTask: (task: Task) => void
   editingTaskId: string | null
   onEditingChange: (id: string | null) => void
+  loading?: boolean
 }
 
 type ColumnMap = Record<Status, UniqueIdentifier[]>
@@ -73,6 +74,11 @@ export function KanbanBoard({
   onUpsertTask,
   editingTaskId,
   onEditingChange,
+  // loading is accepted for future skeleton/disabled states,
+  // but we intentionally ignore it here to keep DnD 100% local/fluido
+  // incluso si React Query está refetching en background.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  loading,
 }: KanbanBoardProps) {
   const [columnMap, setColumnMap] = useState<ColumnMap>(() =>
     tasksToColumnMap(tasks),
