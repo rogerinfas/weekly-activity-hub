@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect, useRef } from 'react'
-import { Task, ApiProject, Status } from '@/lib/types'
+import { useState } from 'react'
+import { Task } from '@/lib/types'
 import { KanbanBoard } from '@/components/kanban/KanbanBoard'
 import { CalendarView } from '@/components/calendar/CalendarView'
 import { MetricsDashboard } from '@/components/dashboard/MetricsDashboard'
@@ -19,186 +19,32 @@ import {
   Sun,
   Settings2,
 } from 'lucide-react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { tasksApi } from '@/lib/api/tasks'
-import { projectsApi } from '@/lib/api/projects'
-import { type WeekRange, getWeekRange, parseTaskDate } from '@/lib/date-utils'
-
-function filterByWeek(tasks: Task[], range: WeekRange | undefined): Task[] {
-  if (!range) return tasks
-
-  const { startDate, endDate } = range
-  const startOnly = new Date(
-    startDate.getFullYear(),
-    startDate.getMonth(),
-    startDate.getDate(),
-  )
-  const endOnly = new Date(
-    endDate.getFullYear(),
-    endDate.getMonth(),
-    endDate.getDate(),
-  )
-
-  return tasks.filter(task => {
-    const input = task.date ?? task.createdAt
-    if (!input) return true
-    const parsed = parseTaskDate(input)
-    const dateOnly = new Date(
-      parsed.getFullYear(),
-      parsed.getMonth(),
-      parsed.getDate(),
-    )
-    return dateOnly >= startOnly && dateOnly <= endOnly
-  })
-}
+import { useDarkMode } from '@/hooks/useDarkMode'
+import { useTasksData } from '@/hooks/useTasksData'
 
 export default function Home() {
-  const queryClient = useQueryClient()
-  const [isDark, setIsDark] = useState(false)
+  const { isDark, toggleDark } = useDarkMode()
   const [activeTab, setActiveTab] = useState<
     'kanban' | 'calendario' | 'dashboard'
   >('kanban')
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
-  const [kanbanWeekRange, setKanbanWeekRange] = useState<
-    WeekRange | undefined
-  >(() => getWeekRange(new Date()))
   const [projectsOpen, setProjectsOpen] = useState(false)
-  const dragBatchCounter = useRef(0)
-
-  const { data: tasks = [] } = useQuery<Task[]>({
-    queryKey: ['tasks'],
-    queryFn: tasksApi.getAll,
-  })
-
-  const { data: projects = [] } = useQuery<ApiProject[]>({
-    queryKey: ['projects'],
-    queryFn: projectsApi.getAll,
-  })
-
-  const createTaskMutation = useMutation({
-    mutationFn: tasksApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    },
-  })
-
-  const updateTaskMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<Task> }) =>
-      tasksApi.update(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    },
-  })
-
-  const deleteTaskMutation = useMutation({
-    mutationFn: tasksApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] })
-    },
-  })
-
-  useEffect(() => {
-    const saved = localStorage.getItem('wah-dark')
-    const prefersDark =
-      saved !== null
-        ? saved === 'true'
-        : window.matchMedia('(prefers-color-scheme: dark)').matches
-    setIsDark(prefersDark)
-    document.documentElement.classList.toggle('dark', prefersDark)
-  }, [])
-
-  function toggleDark() {
-    const next = !isDark
-    setIsDark(next)
-    document.documentElement.classList.toggle('dark', next)
-    localStorage.setItem('wah-dark', String(next))
-  }
-
-  const kanbanTasks = useMemo(
-    () => filterByWeek(tasks, kanbanWeekRange),
-    [tasks, kanbanWeekRange],
-  )
-
-  const completedCount = useMemo(
-    () => kanbanTasks.filter(t => t.status === 'completado').length,
-    [kanbanTasks],
-  )
-  const total = kanbanTasks.length
-  const progressPct =
-    total > 0 ? Math.round((completedCount / total) * 100) : 0
-
-  function handleCreateTask(task: Task) {
-    queryClient.setQueryData<Task[]>(['tasks'], old => [
-      ...(old ?? []),
-      task,
-    ])
-  }
-
-  function handleSaveTask(task: Task) {
-    const cached = tasks.find(t => t.id === task.id)
-    const isOnServer = cached?.createdAt != null
-
-    if (isOnServer) {
-      queryClient.setQueryData<Task[]>(['tasks'], old =>
-        (old ?? []).map(t => (t.id === task.id ? { ...t, ...task } : t)),
-      )
-      updateTaskMutation.mutate({ id: task.id, payload: task })
-    } else if (task.title.trim()) {
-      queryClient.setQueryData<Task[]>(['tasks'], old =>
-        (old ?? []).map(t => (t.id === task.id ? task : t)),
-      )
-      createTaskMutation.mutate(
-        task as Omit<Task, 'id' | 'createdAt' | 'completedAt'>,
-      )
-    }
-  }
-
-  function handleDragCommit(updatedTasks: Task[]) {
-    const prevById = Object.fromEntries(tasks.map(t => [t.id, t]))
-    const changes: { id: string; status: Status; order: number }[] = []
-
-    for (const t of updatedTasks) {
-      const prev = prevById[t.id]
-      if (!prev || !prev.createdAt) continue
-      if (prev.status !== t.status || prev.order !== t.order) {
-        changes.push({ id: t.id, status: t.status, order: t.order ?? 0 })
-      }
-    }
-
-    if (changes.length === 0) return
-
-    queryClient.setQueryData<Task[]>(['tasks'], old => {
-      if (!old) return old
-      const changeById = new Map(changes.map(c => [c.id, c]))
-      return old.map(t => {
-        const c = changeById.get(t.id)
-        return c ? { ...t, status: c.status, order: c.order } : t
-      })
-    })
-
-    dragBatchCounter.current += 1
-    const batchId = dragBatchCounter.current
-
-    Promise.allSettled(
-      changes.map(c =>
-        tasksApi.update(c.id, { status: c.status, order: c.order }),
-      ),
-    ).then(() => {
-      if (dragBatchCounter.current === batchId) {
-        queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      }
-    })
-  }
-
-  function handleDeleteTask(id: string) {
-    const cached = tasks.find(t => t.id === id)
-    queryClient.setQueryData<Task[]>(['tasks'], old =>
-      (old ?? []).filter(t => t.id !== id),
-    )
-    if (cached?.createdAt) {
-      deleteTaskMutation.mutate(id)
-    }
-  }
+  const {
+    tasks,
+    projects,
+    kanbanTasks,
+    kanbanWeekRange,
+    setKanbanWeekRange,
+    completedCount,
+    total,
+    progressPct,
+    handleCreateTask,
+    handleSaveTask,
+    handleDragCommit,
+    handleDeleteTask,
+    loading,
+    error,
+  } = useTasksData()
 
   function handleCalendarEdit(task: Task) {
     setActiveTab('kanban')
@@ -306,16 +152,24 @@ export default function Home() {
                 title="Semana"
               />
             </div>
-            <KanbanBoard
-              tasks={kanbanTasks}
-              projects={projects}
-              onDragCommit={handleDragCommit}
-              onDelete={handleDeleteTask}
-              onCreateTask={handleCreateTask}
-              onUpsertTask={handleSaveTask}
-              editingTaskId={editingTaskId}
-              onEditingChange={setEditingTaskId}
-            />
+            {error ? (
+              <div className="text-sm text-destructive">
+                Ocurrió un error al cargar las tareas o proyectos. Intenta
+                recargar la página.
+              </div>
+            ) : (
+              <KanbanBoard
+                tasks={kanbanTasks}
+                projects={projects}
+                onDragCommit={handleDragCommit}
+                onDelete={handleDeleteTask}
+                onCreateTask={handleCreateTask}
+                onUpsertTask={handleSaveTask}
+                editingTaskId={editingTaskId}
+                onEditingChange={setEditingTaskId}
+                loading={loading}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="calendario" className="mt-0">

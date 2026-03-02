@@ -24,6 +24,16 @@ export const tasksApi = {
     return data;
   },
 
+  // PATCH /tasks/reorder/batch
+  reorderBatch: async (
+    changes: { id: string; status: Status; order: number }[],
+  ): Promise<Task[]> => {
+    const { data } = await apiClient.patch<Task[]>('/tasks/reorder/batch', {
+      updates: changes,
+    });
+    return data;
+  },
+
   // DELETE /tasks/:id
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/tasks/${id}`);
