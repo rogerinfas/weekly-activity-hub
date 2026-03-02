@@ -1,6 +1,6 @@
 'use client'
 
-import { Task, ApiProject } from '@/lib/types'
+import { ApiProject, Task } from '@/lib/types'
 import { WeeklyProgressChart } from './WeeklyProgressChart'
 import { CategoryPieChart } from './CategoryPieChart'
 import { MonthlyHistoryChart } from './MonthlyHistoryChart'
@@ -8,51 +8,43 @@ import { WeekFilter } from './WeekFilter'
 import { type WeekRange, getWeekRange } from '@/lib/date-utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { TrendingUp, Zap, Target, Award } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { tasksApi } from '@/lib/api/tasks'
 
 interface MetricsDashboardProps {
-  tasks: Task[]
   projects: ApiProject[]
 }
 
-export function MetricsDashboard({ tasks, projects }: MetricsDashboardProps) {
+export function MetricsDashboard({ projects }: MetricsDashboardProps) {
   // Por defecto inicializamos con la semana actual
-  const [selectedWeekRange, setSelectedWeekRange] = useState<WeekRange | undefined>(() => getWeekRange(new Date()))
+  const [selectedWeekRange, setSelectedWeekRange] = useState<WeekRange | undefined>(() =>
+    getWeekRange(new Date()),
+  )
 
-  // Filtramos las tareas según el rango seleccionado (usamos date o createdAt para ubicarlas)
-  const filteredTasks = useMemo(() => {
-    if (!selectedWeekRange) return tasks
+  const {
+    data: metrics,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: [
+      'tasks-metrics',
+      selectedWeekRange?.startDate.toISOString(),
+      selectedWeekRange?.endDate.toISOString(),
+    ],
+    queryFn: () =>
+      tasksApi.getMetrics({
+        startDate: selectedWeekRange?.startDate.toISOString(),
+        endDate: selectedWeekRange?.endDate.toISOString(),
+      }),
+    enabled: !!selectedWeekRange,
+  })
 
-    return tasks.filter(t => {
-      // Usamos t.date si existe, si no, t.createdAt
-      const taskDateInput = t.date || t.createdAt || new Date().toISOString()
-      const taskDate = new Date(taskDateInput)
-
-      // Ajustamos hora a 00:00:00 para comparación segura
-      const dateOnly = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate())
-      const startOnly = new Date(selectedWeekRange.startDate.getFullYear(), selectedWeekRange.startDate.getMonth(), selectedWeekRange.startDate.getDate())
-      const endOnly = new Date(selectedWeekRange.endDate.getFullYear(), selectedWeekRange.endDate.getMonth(), selectedWeekRange.endDate.getDate())
-
-      return dateOnly >= startOnly && dateOnly <= endOnly
-    })
-  }, [tasks, selectedWeekRange])
-
-
-  const stats = useMemo(() => {
-    const completed = filteredTasks.filter(t => t.status === 'completado').length
-    const inProgress = filteredTasks.filter(t => t.status === 'en-progreso').length
-
-    // Top project based on filtered tasks
-    const projectCounts = filteredTasks.reduce<Record<string, number>>((acc, t) => {
-      acc[t.project] = (acc[t.project] ?? 0) + 1
-      return acc
-    }, {})
-
-    const sortedProjects = Object.entries(projectCounts).sort((a, b) => b[1] - a[1])
-    const topProject = sortedProjects.length > 0 ? sortedProjects[0] : null
-
-    return { completed, inProgress, topProject }
-  }, [filteredTasks])
+  const filteredTasks: Task[] = metrics?.tasks ?? []
+  const completed = metrics?.summary.completed ?? 0
+  const inProgress = metrics?.summary.inProgress ?? 0
+  const total = metrics?.summary.total ?? 0
+  const topProject = metrics?.summary.topProject ?? null
 
   return (
     <div className="space-y-5">
@@ -69,28 +61,28 @@ export function MetricsDashboard({ tasks, projects }: MetricsDashboardProps) {
         <KpiCard
           icon={<Target className="h-4 w-4" />}
           label="Tareas completadas"
-          value={stats.completed}
+          value={completed}
           color="text-emerald-500"
           bg="bg-emerald-500/10"
         />
         <KpiCard
           icon={<Zap className="h-4 w-4" />}
           label="En progreso"
-          value={stats.inProgress}
+          value={inProgress}
           color="text-amber-500"
           bg="bg-amber-500/10"
         />
         <KpiCard
           icon={<TrendingUp className="h-4 w-4" />}
           label="Tareas totales"
-          value={filteredTasks.length}
+          value={total}
           color="text-blue-500"
           bg="bg-blue-500/10"
         />
         <KpiCard
           icon={<Award className="h-4 w-4" />}
           label="Proyecto líder"
-          value={stats.topProject ? stats.topProject[0] : '—'}
+          value={topProject ? topProject.project : '—'}
           color="text-violet-500"
           bg="bg-violet-500/10"
           capitalize
