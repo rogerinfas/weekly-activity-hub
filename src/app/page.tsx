@@ -181,7 +181,7 @@ export default function Home() {
           </TabsContent>
 
           <TabsContent value="dashboard" className="mt-0">
-            <MetricsDashboard tasks={tasks} projects={projects} />
+            <MetricsDashboard projects={projects} />
           </TabsContent>
         </Tabs>
       </main>
