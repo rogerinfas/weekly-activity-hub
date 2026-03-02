@@ -1,5 +1,5 @@
 import { apiClient } from './client.config';
-import { Task } from '@/lib/types';
+import { Task, Status } from '@/lib/types';
 
 export const tasksApi = {
   // GET /tasks
@@ -31,6 +31,23 @@ export const tasksApi = {
     const { data } = await apiClient.patch<Task[]>('/tasks/reorder/batch', {
       updates: changes,
     });
+    return data;
+  },
+
+  // GET /tasks/metrics
+  getMetrics: async (params: {
+    startDate?: string;
+    endDate?: string;
+  }): Promise<{
+    tasks: Task[];
+    summary: {
+      total: number;
+      completed: number;
+      inProgress: number;
+      topProject: { project: string; count: number } | null;
+    };
+  }> => {
+    const { data } = await apiClient.get('/tasks/metrics', { params });
     return data;
   },
 
