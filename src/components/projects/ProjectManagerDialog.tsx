@@ -38,12 +38,14 @@ export function ProjectManagerDialog({ open, onClose, projects }: ProjectManager
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [form, setForm] = useState<ProjectForm>(emptyForm)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const createMutation = useMutation({
     mutationFn: (data: Omit<ApiProject, 'id'>) => projectsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       resetForm()
+      setDeleteError(null)
     },
   })
 
@@ -53,6 +55,7 @@ export function ProjectManagerDialog({ open, onClose, projects }: ProjectManager
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
       resetForm()
+      setDeleteError(null)
     },
   })
 
@@ -60,6 +63,17 @@ export function ProjectManagerDialog({ open, onClose, projects }: ProjectManager
     mutationFn: projectsApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] })
+      setDeleteError(null)
+    },
+    onError: (error: any) => {
+      const status = error?.response?.status
+      if (status === 409) {
+        setDeleteError(
+          'No puedes eliminar un proyecto que tiene tareas asociadas. Mueve o elimina sus tareas primero.',
+        )
+      } else {
+        setDeleteError('No se pudo eliminar el proyecto. Intenta nuevamente.')
+      }
     },
   })
 
@@ -187,6 +201,10 @@ export function ProjectManagerDialog({ open, onClose, projects }: ProjectManager
             <Plus className="h-3.5 w-3.5" />
             Agregar proyecto
           </Button>
+        )}
+
+        {deleteError && (
+          <p className="mt-2 text-[11px] text-destructive">{deleteError}</p>
         )}
       </DialogContent>
     </Dialog>
