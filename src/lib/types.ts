@@ -12,6 +12,7 @@ export interface Task {
   completedAt?: string
   totalTrackedSeconds?: number
   activeTimerStartedAt?: string | null
+  resumeTimerOnExit?: boolean
 }
 
 export interface ApiProject {
