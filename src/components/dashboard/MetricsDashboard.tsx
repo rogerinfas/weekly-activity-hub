@@ -7,7 +7,7 @@ import { MonthlyHistoryChart } from './MonthlyHistoryChart'
 import { WeekFilter } from './WeekFilter'
 import { type WeekRange, getWeekRange } from '@/lib/date-utils'
 import { Card, CardContent } from '@/components/ui/card'
-import { TrendingUp, Zap, Target, Award } from 'lucide-react'
+import { TrendingUp, Zap, Target, Award, Clock3 } from 'lucide-react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { tasksApi } from '@/lib/api/tasks'
@@ -45,6 +45,15 @@ export function MetricsDashboard({ projects }: MetricsDashboardProps) {
   const inProgress = metrics?.summary.inProgress ?? 0
   const total = metrics?.summary.total ?? 0
   const topProject = metrics?.summary.topProject ?? null
+  const totalTrackedSecondsGlobal =
+    metrics?.summary.totalTrackedSecondsGlobal ?? 0
+  const timeByProject = metrics?.summary.timeByProject ?? []
+  const topTasksByTime = metrics?.summary.topTasksByTime ?? []
+
+  function formatSecondsToHours(seconds: number) {
+    const hours = seconds / 3600
+    return `${hours.toFixed(1)} h`
+  }
 
   return (
     <div className="space-y-5">
@@ -87,14 +96,90 @@ export function MetricsDashboard({ projects }: MetricsDashboardProps) {
           bg="bg-violet-500/10"
           capitalize
         />
+        <KpiCard
+          icon={<Clock3 className="h-4 w-4" />}
+          label="Tiempo total invertido"
+          value={formatSecondsToHours(totalTrackedSecondsGlobal)}
+          color="text-sky-500"
+          bg="bg-sky-500/10"
+        />
       </div>
 
       {/* Charts grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <WeeklyProgressChart tasks={filteredTasks} />
         <CategoryPieChart tasks={filteredTasks} projects={projects} />
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-4">
           <MonthlyHistoryChart tasks={filteredTasks} />
+
+          {/* Ranking de tiempo por proyecto */}
+          <Card className="rounded-2xl border-border/60 shadow-sm">
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  Tiempo por proyecto
+                </span>
+              </div>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {timeByProject.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Aún no hay tiempo registrado.
+                  </p>
+                )}
+                {timeByProject.map(item => {
+                  const totalSeconds = item.totalSeconds
+                  const label =
+                    projects.find(p => p.name === item.project)?.label ??
+                    item.project
+                  return (
+                    <div
+                      key={item.project}
+                      className="flex items-center justify-between text-[11px]"
+                    >
+                      <span className="truncate mr-2">{label}</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {formatSecondsToHours(totalSeconds)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Top tareas por tiempo */}
+          <Card className="rounded-2xl border-border/60 shadow-sm">
+            <CardContent className="p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground">
+                  Tareas con más tiempo
+                </span>
+              </div>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {topTasksByTime.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Aún no hay tiempo registrado en tareas.
+                  </p>
+                )}
+                {topTasksByTime.map(task => (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between text-[11px]"
+                  >
+                    <div className="flex flex-col mr-2 min-w-0">
+                      <span className="truncate">{task.title}</span>
+                      <span className="truncate text-[10px] text-muted-foreground">
+                        {task.project}
+                      </span>
+                    </div>
+                    <span className="tabular-nums text-muted-foreground">
+                      {formatSecondsToHours(task.totalSeconds)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
