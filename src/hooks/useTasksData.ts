@@ -135,12 +135,49 @@ export function useTasksData() {
 
     if (changes.length === 0) return
 
+    const nowMs = Date.now()
+
     queryClient.setQueryData<Task[]>(['tasks'], old => {
       if (!old) return old
       const changeById = new Map(changes.map(c => [c.id, c]))
       return old.map(t => {
         const c = changeById.get(t.id)
-        return c ? { ...t, status: c.status, order: c.order } : t
+        if (!c) return t
+
+        const prev = prevById[t.id]
+        if (!prev) {
+          return { ...t, status: c.status, order: c.order }
+        }
+
+        const wasCompleted = prev.status === 'completado'
+        const isCompleted = c.status === 'completado'
+
+        let activeTimerStartedAt = t.activeTimerStartedAt ?? null
+        let totalTrackedSeconds = t.totalTrackedSeconds ?? 0
+
+        if (!wasCompleted && isCompleted) {
+          if (activeTimerStartedAt) {
+            const startedAtMs = Date.parse(activeTimerStartedAt)
+            const deltaSeconds = Math.max(
+              0,
+              Math.floor((nowMs - startedAtMs) / 1000),
+            )
+            totalTrackedSeconds += deltaSeconds
+            activeTimerStartedAt = null
+          }
+        } else if (wasCompleted && !isCompleted) {
+          if (!activeTimerStartedAt) {
+            activeTimerStartedAt = new Date(nowMs).toISOString()
+          }
+        }
+
+        return {
+          ...t,
+          status: c.status,
+          order: c.order,
+          activeTimerStartedAt,
+          totalTrackedSeconds,
+        }
       })
     })
 
