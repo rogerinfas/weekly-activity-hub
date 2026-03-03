@@ -154,6 +154,7 @@ export function useTasksData() {
 
         let activeTimerStartedAt = t.activeTimerStartedAt ?? null
         let totalTrackedSeconds = t.totalTrackedSeconds ?? 0
+        let resumeTimerOnExit = t.resumeTimerOnExit ?? false
 
         if (!wasCompleted && isCompleted) {
           if (activeTimerStartedAt) {
@@ -164,11 +165,15 @@ export function useTasksData() {
             )
             totalTrackedSeconds += deltaSeconds
             activeTimerStartedAt = null
+            resumeTimerOnExit = true
+          } else {
+            resumeTimerOnExit = false
           }
         } else if (wasCompleted && !isCompleted) {
-          if (!activeTimerStartedAt) {
+          if (resumeTimerOnExit && !activeTimerStartedAt) {
             activeTimerStartedAt = new Date(nowMs).toISOString()
           }
+          resumeTimerOnExit = false
         }
 
         return {
@@ -177,6 +182,7 @@ export function useTasksData() {
           order: c.order,
           activeTimerStartedAt,
           totalTrackedSeconds,
+          resumeTimerOnExit,
         }
       })
     })
