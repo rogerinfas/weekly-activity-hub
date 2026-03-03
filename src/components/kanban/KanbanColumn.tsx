@@ -18,6 +18,8 @@ interface KanbanColumnProps {
   editingTaskId?: string | null
   onSave?: (task: Task) => void
   onCancel?: () => void
+  onStartTimer?: (taskId: string) => void
+  onStopTimer?: (taskId: string) => void
 }
 
 export function KanbanColumn({
@@ -30,6 +32,8 @@ export function KanbanColumn({
   editingTaskId = null,
   onSave,
   onCancel,
+  onStartTimer,
+  onStopTimer,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
 
@@ -82,6 +86,8 @@ export function KanbanColumn({
                   if (isNew) onDelete(task.id)
                   onCancel?.()
                 }}
+                onStartTimer={onStartTimer ?? (() => {})}
+                onStopTimer={onStopTimer ?? (() => {})}
               />
             )
           })}

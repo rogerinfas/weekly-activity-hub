@@ -10,16 +10,13 @@ export const tasksApi = {
 
   // POST /tasks
   create: async (taskDraft: Omit<Task, 'id' | 'createdAt' | 'completedAt'>): Promise<Task> => {
-    // Ensuring date strings instead of Date objects depending on backend needs, but we map simple types
     const { data } = await apiClient.post<Task>('/tasks', taskDraft);
     return data;
   },
 
   // PATCH /tasks/:id
   update: async (id: string, payload: Partial<Task>): Promise<Task> => {
-    // Destructure not updatable fields just in case
     const { id: _id, createdAt: _createdAt, ...updateData } = payload as any;
-    
     const { data } = await apiClient.patch<Task>(`/tasks/${id}`, updateData);
     return data;
   },
@@ -34,6 +31,18 @@ export const tasksApi = {
     return data;
   },
 
+  // POST /tasks/:id/timer/start
+  startTimer: async (id: string): Promise<Task> => {
+    const { data } = await apiClient.post<Task>(`/tasks/${id}/timer/start`, {});
+    return data;
+  },
+
+  // POST /tasks/:id/timer/stop
+  stopTimer: async (id: string): Promise<Task> => {
+    const { data } = await apiClient.post<Task>(`/tasks/${id}/timer/stop`, {});
+    return data;
+  },
+
   // GET /tasks/metrics
   getMetrics: async (params: {
     startDate?: string;
@@ -45,6 +54,14 @@ export const tasksApi = {
       completed: number;
       inProgress: number;
       topProject: { project: string; count: number } | null;
+      totalTrackedSecondsGlobal: number;
+      timeByProject: { project: string; totalSeconds: number }[];
+      topTasksByTime: {
+        id: string;
+        title: string;
+        project: string;
+        totalSeconds: number;
+      }[];
     };
   }> => {
     const { data } = await apiClient.get('/tasks/metrics', { params });

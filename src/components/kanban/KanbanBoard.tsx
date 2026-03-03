@@ -37,6 +37,8 @@ interface KanbanBoardProps {
   editingTaskId: string | null
   onEditingChange: (id: string | null) => void
   loading?: boolean
+  onStartTimer: (taskId: string) => void
+  onStopTimer: (taskId: string) => void
 }
 
 type ColumnMap = Record<Status, UniqueIdentifier[]>
@@ -79,6 +81,8 @@ export function KanbanBoard({
   // incluso si React Query está refetching en background.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   loading,
+  onStartTimer,
+  onStopTimer,
 }: KanbanBoardProps) {
   const [columnMap, setColumnMap] = useState<ColumnMap>(() =>
     tasksToColumnMap(tasks),
@@ -311,6 +315,8 @@ export function KanbanBoard({
             editingTaskId={editingTaskId}
             onEditingChange={onEditingChange}
             onUpsertTask={onUpsertTask}
+            onStartTimer={onStartTimer}
+            onStopTimer={onStopTimer}
           />
         ))}
       </div>
@@ -334,6 +340,8 @@ interface DroppableColumnProps {
   editingTaskId: string | null
   onEditingChange: (id: string | null) => void
   onUpsertTask: (task: Task) => void
+  onStartTimer: (taskId: string) => void
+  onStopTimer: (taskId: string) => void
 }
 
 function DroppableColumn({
@@ -346,6 +354,8 @@ function DroppableColumn({
   editingTaskId,
   onEditingChange,
   onUpsertTask,
+  onStartTimer,
+  onStopTimer,
 }: DroppableColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id })
   const taskById = Object.fromEntries(allTasks.map(t => [t.id, t]))
@@ -407,6 +417,8 @@ function DroppableColumn({
                   if (isNew) onDelete(task.id)
                   onEditingChange(null)
                 }}
+                onStartTimer={onStartTimer}
+                onStopTimer={onStopTimer}
               />
             )
           })}

@@ -13,7 +13,7 @@ import {
 } from '@/lib/types'
 import { parseTaskDate } from '@/lib/date-utils'
 import { Badge } from '@/components/ui/badge'
-import { Pencil, Trash2, CheckCircle2, Check, X } from 'lucide-react'
+import { Pencil, Trash2, CheckCircle2, Check, X, Clock3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -25,6 +25,8 @@ interface KanbanCardProps {
   onDelete: (id: string) => void
   onSave: (task: Task) => void
   onCancel: () => void
+  onStartTimer: (taskId: string) => void
+  onStopTimer: (taskId: string) => void
 }
 
 export function KanbanCard({
@@ -35,6 +37,8 @@ export function KanbanCard({
   onDelete,
   onSave,
   onCancel,
+  onStartTimer,
+  onStopTimer,
 }: KanbanCardProps) {
   const {
     attributes,
@@ -73,6 +77,8 @@ export function KanbanCard({
         onDelete={onDelete}
         onSave={onSave}
         onCancel={onCancel}
+        onStartTimer={onStartTimer}
+        onStopTimer={onStopTimer}
       />
     </div>
   )
@@ -88,7 +94,20 @@ interface CardContentProps {
   onCancel: () => void
 }
 
-function CardContent({ task, projects, isEditing, onEdit, onDelete, onSave, onCancel }: CardContentProps) {
+function CardContent({
+  task,
+  projects,
+  isEditing,
+  onEdit,
+  onDelete,
+  onSave,
+  onCancel,
+  onStartTimer,
+  onStopTimer,
+}: CardContentProps & {
+  onStartTimer: (taskId: string) => void
+  onStopTimer: (taskId: string) => void
+}) {
   const [draft, setDraft] = useState<Task>(task)
   const titleRef = useRef<HTMLInputElement>(null)
   const descRef = useRef<HTMLTextAreaElement>(null)
@@ -146,6 +165,35 @@ function CardContent({ task, projects, isEditing, onEdit, onDelete, onSave, onCa
   }, [isEditing, draft])
 
   const canSave = draft.title.trim().length > 0
+
+  const [now, setNow] = useState(() => Date.now())
+  const isRunning = !!task.activeTimerStartedAt
+
+  useEffect(() => {
+    if (!task.activeTimerStartedAt) return
+    const id = window.setInterval(() => {
+      setNow(Date.now())
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [task.activeTimerStartedAt])
+
+  const baseSeconds = task.totalTrackedSeconds ?? 0
+  const extraSeconds =
+    task.activeTimerStartedAt != null
+      ? Math.max(
+          0,
+          Math.floor((now - Date.parse(task.activeTimerStartedAt)) / 1000),
+        )
+      : 0
+  const totalSeconds = baseSeconds + extraSeconds
+
+  function formatSeconds(seconds: number) {
+    const hrs = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`
+  }
 
   return (
     <div ref={formRef} onKeyDown={isEditing ? handleKeyDown : undefined}>
@@ -290,6 +338,27 @@ function CardContent({ task, projects, isEditing, onEdit, onDelete, onSave, onCa
             {getProjectLabel(projects, task.project)}
           </Badge>
         )}
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onPointerDown={e => e.stopPropagation()}
+          onClick={() => (isRunning ? onStopTimer(task.id) : onStartTimer(task.id))}
+          className={cn(
+            'inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border',
+            'transition-colors duration-150',
+            isRunning
+              ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+              : 'border-muted-foreground/30 text-muted-foreground hover:bg-muted/60',
+          )}
+        >
+          <Clock3 className="h-3 w-3" />
+          <span>{isRunning ? 'Pausar' : 'Iniciar'}</span>
+        </button>
+        <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">
+          {formatSeconds(totalSeconds)}
+        </span>
       </div>
 
       {task.completedAt && (

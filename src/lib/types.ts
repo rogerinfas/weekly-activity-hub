@@ -10,6 +10,8 @@ export interface Task {
   order?: number
   createdAt?: string
   completedAt?: string
+  totalTrackedSeconds?: number
+  activeTimerStartedAt?: string | null
 }
 
 export interface ApiProject {
