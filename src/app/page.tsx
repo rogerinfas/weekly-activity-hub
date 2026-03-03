@@ -42,6 +42,8 @@ export default function Home() {
     handleSaveTask,
     handleDragCommit,
     handleDeleteTask,
+    startTimer,
+    stopTimer,
     loading,
     error,
   } = useTasksData()
@@ -168,6 +170,8 @@ export default function Home() {
                 editingTaskId={editingTaskId}
                 onEditingChange={setEditingTaskId}
                 loading={loading}
+                onStartTimer={startTimer}
+                onStopTimer={stopTimer}
               />
             )}
           </TabsContent>
