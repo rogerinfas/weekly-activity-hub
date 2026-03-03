@@ -166,6 +166,53 @@ export function useTasksData() {
     }
   }
 
+  function startTimer(taskId: string) {
+    const nowIso = new Date().toISOString()
+    queryClient.setQueryData<Task[]>(['tasks'], old =>
+      (old ?? []).map(t =>
+        t.id === taskId && !t.activeTimerStartedAt
+          ? { ...t, activeTimerStartedAt: nowIso }
+          : t,
+      ),
+    )
+
+    tasksApi
+      .startTimer(taskId)
+      .finally(() => {
+        queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      })
+  }
+
+  function stopTimer(taskId: string) {
+    const currentTasks = queryClient.getQueryData<Task[]>(['tasks']) ?? tasks
+    const target = currentTasks.find(t => t.id === taskId)
+    if (!target?.activeTimerStartedAt) {
+      return
+    }
+
+    const startedAtMs = Date.parse(target.activeTimerStartedAt)
+    const nowMs = Date.now()
+    const deltaSeconds = Math.max(0, Math.floor((nowMs - startedAtMs) / 1000))
+
+    queryClient.setQueryData<Task[]>(['tasks'], old =>
+      (old ?? []).map(t =>
+        t.id === taskId
+          ? {
+              ...t,
+              activeTimerStartedAt: null,
+              totalTrackedSeconds: (t.totalTrackedSeconds ?? 0) + deltaSeconds,
+            }
+          : t,
+      ),
+    )
+
+    tasksApi
+      .stopTimer(taskId)
+      .finally(() => {
+        queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      })
+  }
+
   return {
     tasks,
     projects,
@@ -179,6 +226,8 @@ export function useTasksData() {
     handleSaveTask,
     handleDragCommit,
     handleDeleteTask,
+    startTimer,
+    stopTimer,
     loading: tasksLoading || projectsLoading,
     error: tasksError || projectsError,
   }
